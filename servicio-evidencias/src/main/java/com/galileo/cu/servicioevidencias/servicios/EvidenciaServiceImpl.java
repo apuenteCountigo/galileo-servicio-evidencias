@@ -145,8 +145,12 @@ public class EvidenciaServiceImpl implements EvidenciaService {
         try {
             if (ProgEvidens.ftp == null || !ProgEvidens.ftp.isConnected())
                 ProgEvidens.ftp = ConectarFTP(usu.getId());
-        } catch (Exception e1) {
-            throw new RuntimeException("Fallo Conectando al FTP");
+        } catch (Exception e) {
+            if (e.getMessage().contains("Fallo")) {
+                throw new RuntimeException(e.getMessage());
+            } else {
+                throw new RuntimeException("Fallo Conectando al FTP");
+            }
         }
 
         try {
@@ -511,8 +515,17 @@ public class EvidenciaServiceImpl implements EvidenciaService {
                     "Fallo, conexión Fallida al servidor FTP " + con.getIpServicio() + ":" + con.getPuerto());
         }
 
+        boolean successLogin = ftp.login(con.getUsuario(), con.getPassword());
+        int replyCode = ftp.getReplyCode();
+        if (successLogin) {
+            log.info("La autenticación fue satizfactoria.");
+        } else {
+            log.info("Fallo intentando la autenticación con el servidor ftp");
+            Desconectar(ftp);
+            throw new IOException("Fallo intentando la autenticación con el servidor ftp");
+        }
+
         try {
-            ftp.login(con.getUsuario(), con.getPassword());
 
             if (passiveMode != null && passiveMode.length > 0 && passiveMode[0]) {
                 log.info("Creando conexión pasiva al ftp");
