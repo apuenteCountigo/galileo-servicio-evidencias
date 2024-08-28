@@ -1,0 +1,65 @@
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+jobs:
+  run_pull:
+    name: run pull
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get list of modified files
+        id: modified-files
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: { files } } = await github.rest.repos.getCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: context.sha
+            });
+            const fileNames = files.map(f => f.filename).join(' ');
+            core.setOutput('files', fileNames);
+      - name: Iterate and process each modified file via SSH
+        run: |
+          start_deploy="false"
+          for file in ${{ steps.modified-files.outputs.files }}; do
+              echo "Fue modificado $file"
+              if [[ ! "$file" =~ ".yml" && ! "$file" =~ "Dockerfile" ]]; then
+                echo "Dentro del IF"
+                start_deploy="true"
+              fi
+          done
+          echo "start_deploy<<EOF" >> $GITHUB_ENV
+          echo "$start_deploy" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+      - name: executing remote ssh commands using ssh key
+        if: env.start_deploy == 'true'
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            ssh -i ~/id_rsaalain mome@192.168.0.98 '
+            cd galileo-newdev/evidencias/galileo-servicio-evidencias &&
+            git fetch origin &&
+            git reset --hard origin/main &&
+            git pull &&
+            cd servicio-evidencias &&
+            export PATH=/opt/maven/bin:$PATH && mvn clean install -DskipTests &&
+            mv ./target/servicio-evidencias-0.0.1-SNAPSHOT.jar ../../servicio-evidencias.jar &&
+            cd ../../../ &&
+            CONTAINER_NAME="servicio-evidencias" &&
+            IMAGE_NAME=$(docker inspect --format='{{.Config.Image}}' "$CONTAINER_NAME") &&
+            if [[ -n "$IMAGE_NAME" ]]; then
+              docker stop "$CONTAINER_NAME" &&
+              docker rm "$CONTAINER_NAME" &&
+              docker rmi "$IMAGE_NAME" &&
+              echo "$IMAGE_NAME"
+            fi;
+            docker compose up servicio-evidencias -d'
+            exit
