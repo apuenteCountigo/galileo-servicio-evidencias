@@ -86,6 +86,8 @@ public class EvidenciaServiceImpl implements EvidenciaService {
     @Autowired
     HistoricoObjetivosBalizasRepository hobjbalRepo;
 
+    String BaseDir = "/";
+
     public String body = "";
     public String csvContent = "";
     public FTPClient ftp;
@@ -154,20 +156,47 @@ public class EvidenciaServiceImpl implements EvidenciaService {
         }
 
         try {
-            ProgEvidens.ftp.changeWorkingDirectory("/UNIDADES/"
-                    + objs.get(0).getOperaciones().getUnidades().getDenominacion()
-                    + "/INFORMES " + objs.get(0).getOperaciones().getDescripcion()
+            String unidadesDir = BaseDir + "/UNIDADES/";
+            unidadesDir = unidadesDir.replace("//", "/");
+
+            String carpetaUnidad = objs.get(0).getOperaciones().getUnidades().getDenominacion();
+            String carpetaOperacion = objs.get(0).getOperaciones().getDescripcion();
+
+            boolean dirExists = ftp.changeWorkingDirectory(unidadesDir);
+            if (!dirExists) {
+                log.error("Fallo, no existe la estructura de directorios, se procede a su creación");
+                ftp.changeWorkingDirectory(BaseDir);
+            }
+
+            try {
+                ftp.mkd(unidadesDir);
+                ftp.mkd(unidadesDir + carpetaUnidad);
+                ftp.mkd(unidadesDir + carpetaUnidad + "/INFORMES "
+                        + carpetaOperacion);
+                ftp.mkd(unidadesDir + carpetaUnidad + "/INFORMES "
+                        + carpetaOperacion + "/PERSONALIZADOS");
+                log.info(unidadesDir + carpetaUnidad + "/INFORMES "
+                        + carpetaOperacion + "/PERSONALIZADOS");
+            } catch (Exception e) {
+                Desconectar(ftp);
+                log.error("Fallo creando estructura de Directorios " + e.getMessage());
+                throw new Exception("Fallo Creando Estructura de Directorios para la Operación");
+            }
+
+            ProgEvidens.ftp.changeWorkingDirectory(unidadesDir
+                    + carpetaUnidad
+                    + "/INFORMES " + carpetaOperacion
                     + "/PERSONALIZADOS/");
 
             ProgEvidens.ftp
-                    .mkd(objs.get(0).getOperaciones().getDescripcion()
+                    .mkd(carpetaOperacion
                             + "(" + fi.replace("T", " ") + "-"
                             + ff.replace("T", " ") + ")");
 
-            pathOperacion = "/UNIDADES/" + objs.get(0).getOperaciones().getUnidades().getDenominacion()
+            pathOperacion = unidadesDir + carpetaUnidad
                     + "/INFORMES "
-                    + objs.get(0).getOperaciones().getDescripcion() + "/PERSONALIZADOS/"
-                    + objs.get(0).getOperaciones().getDescripcion() + "(" + fi.replace("T", " ") + "-"
+                    + carpetaOperacion + "/PERSONALIZADOS/"
+                    + carpetaOperacion + "(" + fi.replace("T", " ") + "-"
                     + ff.replace("T", " ") + ")/";
 
             ProgEvidens.ftp.changeWorkingDirectory(pathOperacion);
@@ -182,12 +211,12 @@ public class EvidenciaServiceImpl implements EvidenciaService {
             }
         } catch (Exception e) {
             eviRepo.EliminarProgEvidens(usu.getId());
-            /*
-             * ProgEvidens.progEvi.remove(usu.getId());
-             * ProgEvidens.ficherosPendientes.remove(usu.getId());
-             */
-            log.error("Fallo Creando Carpetas en FTP " + e.getMessage());
-            throw new RuntimeException("Fallo Creando Carpetas en FTP");
+            if (e.getMessage().contains("Fallo")) {
+                throw new RuntimeException(e.getMessage());
+            } else {
+                log.error("Fallo creando carpetas en FTP " + e.getMessage());
+                throw new RuntimeException("Fallo creando carpetas en FTP");
+            }
         }
 
         String pendientesFirma[] = { "" };
@@ -238,19 +267,6 @@ public class EvidenciaServiceImpl implements EvidenciaService {
 
             por = ProgEvidens.progEvi.get(usu.getId());
             ProgEvidens.progEvi.replace(usu.getId(), por + incremento);
-
-            /*
-             * try {
-             * pro[0].setValor(pro[0].getValor() + incremento);
-             * proRep.save(pro[0]);
-             * log.info("Progreso..." + pro[0].getValor());
-             * } catch (Exception e) {
-             * proRep.delete(pro[0]);
-             * log.error("Fallo Insertando Progreso de Evidencias: ", e.getMessage());
-             * throw new RuntimeException("Fallo Insertando Progreso de Evidencias");
-             * }
-             */
-
         });
 
         if (!ProgEvidens.ficherosPendientes.isEmpty() && ProgEvidens.ficherosPendientes.size() > 0
@@ -322,72 +338,6 @@ public class EvidenciaServiceImpl implements EvidenciaService {
 
             ProgEvidens.progEvi.replace(usu.getId(), 95);
         }
-
-        // Eliminar Ficheros Basura
-        /*
-         * String f = "";
-         * String pendientesFirma = "";
-         * try {
-         * List<String> files = ListarFicheros("./", 1);
-         * for (String file : files) {
-         * f = file;
-         * if (file.contains(".kml") || file.contains(".csv") || file.contains(".pdf")
-         * || file.contains(".zip")) {
-         * File fichero = new File(file);
-         * if (fichero.delete()) {
-         * System.out.println("Fue Eliminado el Fichero: " + file);
-         * } else {
-         * System.out.println("No se Pudo Eliminar el Fichero: " + file);
-         * }
-         * }
-         * 
-         * if (file.contains(".csv")) {
-         * if (pendientesFirma == "")
-         * pendientesFirma = file;
-         * else
-         * pendientesFirma = "," + file;
-         * }
-         * }
-         * } catch (Exception e) {
-         * proRep.delete(pro);
-         * System.out.println("Fallo en la Eliminación del Fichero " + f + ": " +
-         * e.getMessage());
-         * throw new RuntimeException("Fallo en la Eliminación del Fichero: " + f);
-         * }
-         * try {
-         * pro[0].setValor(pro[0].getValor() + incremento);
-         * proRep.save(pro);
-         * } catch (Exception e) {
-         * proRep.delete(pro);
-         * System.out.println("Fallo Insertando Progreso de Evidencias: " +
-         * e.getMessage());
-         * throw new RuntimeException("Fallo Insertando Progreso de Evidencias");
-         * }
-         * 
-         * try {
-         * if (pendientesFirma != "" && objs != null && objs.size() > 0) {
-         * Objetivos obj = objs.get(1);
-         * dataminer.enviarNombresCSV(Integer.valueOf(obj.getOperaciones().
-         * getIdDataminer()),
-         * Integer.valueOf(obj.getOperaciones().getIdElement()), pendientesFirma);
-         * }
-         * } catch (Exception e) {
-         * proRep.delete(pro);
-         * System.out.println("Fallo el Envio al Dataminer de Nombres para Firmar: " +
-         * e.getMessage());
-         * throw new
-         * RuntimeException("Fallo el Envio al Dataminer de Nombres para Firmar");
-         * }
-         * try {
-         * pro[0].setValor(pro[0].getValor() + incremento);
-         * proRep.save(pro);
-         * } catch (Exception e) {
-         * proRep.delete(pro);
-         * System.out.println("Fallo Insertando Progreso de Evidencias: " +
-         * e.getMessage());
-         * throw new RuntimeException("Fallo Insertando Progreso de Evidencias");
-         * }
-         */
     }
 
     private void FilesUpload(String nombre, String camino) {
@@ -540,6 +490,17 @@ public class EvidenciaServiceImpl implements EvidenciaService {
                     + ":" + con.getPuerto(), e);
             throw new IOException("Fallo, Usuario o Contraseña Incorrecto, al Intentar Autenticarse en Servidor FTP "
                     + con.getIpServicio() + ":" + con.getPuerto());
+        }
+
+        if (con.getRuta() != null && con.getRuta() != "") {
+            BaseDir = con.getRuta();
+        }
+
+        boolean dirExists = ftp.changeWorkingDirectory(BaseDir);
+        if (!dirExists) {
+            log.error("Fallo, la ruta suministrada en la conexión ftp, no es válida");
+            BaseDir = "/";
+            ftp.changeWorkingDirectory(BaseDir);
         }
 
         return ftp;
