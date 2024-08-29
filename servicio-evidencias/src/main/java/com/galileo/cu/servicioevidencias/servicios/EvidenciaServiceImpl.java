@@ -162,23 +162,23 @@ public class EvidenciaServiceImpl implements EvidenciaService {
             String carpetaUnidad = objs.get(0).getOperaciones().getUnidades().getDenominacion();
             String carpetaOperacion = objs.get(0).getOperaciones().getDescripcion();
 
-            boolean dirExists = ftp.changeWorkingDirectory(unidadesDir);
+            boolean dirExists = ProgEvidens.ftp.changeWorkingDirectory(unidadesDir);
             if (!dirExists) {
                 log.error("Fallo, no existe la estructura de directorios, se procede a su creación");
-                ftp.changeWorkingDirectory(BaseDir);
+                ProgEvidens.ftp.changeWorkingDirectory(BaseDir);
             }
 
             try {
-                ftp.mkd(unidadesDir);
-                ftp.mkd(unidadesDir + carpetaUnidad);
-                ftp.mkd(unidadesDir + carpetaUnidad + "/INFORMES "
+                ProgEvidens.ftp.mkd(unidadesDir);
+                ProgEvidens.ftp.mkd(unidadesDir + carpetaUnidad);
+                ProgEvidens.ftp.mkd(unidadesDir + carpetaUnidad + "/INFORMES "
                         + carpetaOperacion);
-                ftp.mkd(unidadesDir + carpetaUnidad + "/INFORMES "
+                ProgEvidens.ftp.mkd(unidadesDir + carpetaUnidad + "/INFORMES "
                         + carpetaOperacion + "/PERSONALIZADOS");
                 log.info(unidadesDir + carpetaUnidad + "/INFORMES "
                         + carpetaOperacion + "/PERSONALIZADOS");
             } catch (Exception e) {
-                Desconectar(ftp);
+                Desconectar(ProgEvidens.ftp);
                 log.error("Fallo creando estructura de Directorios " + e.getMessage());
                 throw new Exception("Fallo Creando Estructura de Directorios para la Operación");
             }
