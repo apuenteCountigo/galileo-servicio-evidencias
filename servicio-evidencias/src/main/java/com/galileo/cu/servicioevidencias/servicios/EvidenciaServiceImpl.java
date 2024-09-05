@@ -175,6 +175,12 @@ public class EvidenciaServiceImpl implements EvidenciaService {
                         + carpetaOperacion);
                 ProgEvidens.ftp.mkd(unidadesDir + carpetaUnidad + "/INFORMES "
                         + carpetaOperacion + "/PERSONALIZADOS");
+                ProgEvidens.ftp.mkd(unidadesDir + carpetaUnidad + "/INFORMES "
+                        + carpetaOperacion + "/ORIGINALES");
+                ProgEvidens.ftp.mkd(unidadesDir + carpetaUnidad + "/INFORMES "
+                        + carpetaOperacion + "/PENDIENTES DE FIRMA");
+                ProgEvidens.ftp.mkd(unidadesDir + carpetaUnidad + "/INFORMES "
+                        + carpetaOperacion + "/FIRMADOS");
                 log.info(unidadesDir + carpetaUnidad + "/INFORMES "
                         + carpetaOperacion + "/PERSONALIZADOS");
             } catch (Exception e) {
