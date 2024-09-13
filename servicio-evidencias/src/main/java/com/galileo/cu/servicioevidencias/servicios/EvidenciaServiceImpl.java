@@ -107,6 +107,8 @@ public class EvidenciaServiceImpl implements EvidenciaService {
         JwtObjectMap autenticado;
         Usuarios usu;
         String pathOperacion;
+        String baseDir;
+        String currentDir;
 
         try {
             autenticado = TomarAutenticado(token);
@@ -154,7 +156,11 @@ public class EvidenciaServiceImpl implements EvidenciaService {
         }
 
         try {
-            ProgEvidens.ftp.changeWorkingDirectory("/UNIDADES/"
+            baseDir = ProgEvidens.ftp.printWorkingDirectory();
+            currentDir = baseDir;
+            currentDir = currentDir + "/UNIDADES";
+            currentDir = currentDir.replace("//", "/");
+            ProgEvidens.ftp.changeWorkingDirectory(currentDir + "/"
                     + objs.get(0).getOperaciones().getUnidades().getDenominacion()
                     + "/INFORMES " + objs.get(0).getOperaciones().getDescripcion()
                     + "/PERSONALIZADOS/");
@@ -164,7 +170,9 @@ public class EvidenciaServiceImpl implements EvidenciaService {
                             + "(" + fi.replace("T", " ") + "-"
                             + ff.replace("T", " ") + ")");
 
-            pathOperacion = "/UNIDADES/" + objs.get(0).getOperaciones().getUnidades().getDenominacion()
+            log.info("Directorio Actual L171: " + ProgEvidens.ftp.printWorkingDirectory());
+
+            pathOperacion = currentDir + "/" + objs.get(0).getOperaciones().getUnidades().getDenominacion()
                     + "/INFORMES "
                     + objs.get(0).getOperaciones().getDescripcion() + "/PERSONALIZADOS/"
                     + objs.get(0).getOperaciones().getDescripcion() + "(" + fi.replace("T", " ") + "-"
@@ -172,6 +180,8 @@ public class EvidenciaServiceImpl implements EvidenciaService {
 
             ProgEvidens.ftp.changeWorkingDirectory(pathOperacion);
             ProgEvidens.ftp.mkd("KMLS");
+
+            log.info("Directorio Actual L182: " + ProgEvidens.ftp.printWorkingDirectory());
 
             if (ProgEvidens.ftp.isConnected()) {
                 try {
@@ -276,7 +286,7 @@ public class EvidenciaServiceImpl implements EvidenciaService {
                 if (v.contains("®")) {
                     arrVal = v.split("®");
                     try {
-                        ProgEvidens.ftp.changeWorkingDirectory("/");
+                        ProgEvidens.ftp.changeWorkingDirectory(baseDir);
                         ProgEvidens.ftp.mkd(pathOperacion + arrVal[0]);
                         FilesUpload(arrVal[1], pathOperacion + arrVal[0]);
                     } catch (IOException e) {
