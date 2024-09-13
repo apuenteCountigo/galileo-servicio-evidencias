@@ -1,7 +1,7 @@
 on:
   push:
     branches:
-      - main
+      - BeforeRuta
   workflow_dispatch:
 jobs:
   run_pull:
@@ -47,7 +47,8 @@ jobs:
             ssh -i ~/id_rsaalain mome@192.168.0.98 '
             cd galileo-newdev/evidencias/galileo-servicio-evidencias &&
             git fetch origin &&
-            git reset --hard origin/main &&
+            git checkout BeforeRuta &&
+            git reset --hard origin/BeforeRuta &&
             git pull &&
             cd servicio-evidencias &&
             export PATH=/opt/maven/bin:$PATH && mvn clean install -DskipTests &&
