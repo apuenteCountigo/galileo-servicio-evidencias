@@ -274,16 +274,6 @@ public class EvidenciaRepositoryImpl implements EvidenciaRepository {
                     throw new RuntimeException(e.getMessage());
                 }
 
-                /*
-                 * try {
-                 * SubirFichero(ftp, acta, pathOperacion + bClave[0]);
-                 * } catch (Exception e) {
-                 * log.error("Fallo Subiendo Acta: ", e.getMessage());
-                 * ProgEvidens.progEvi.remove(idAuth);
-                 * throw new RuntimeException(e.getMessage());
-                 * }
-                 */
-
                 bClave[1] = "";
                 bClave[2] = "";
             }
