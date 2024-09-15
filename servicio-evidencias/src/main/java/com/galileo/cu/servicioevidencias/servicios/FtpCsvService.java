@@ -1,9 +1,11 @@
 package com.galileo.cu.servicioevidencias.servicios;
 
 import org.apache.commons.net.ftp.FTPClient;
+import org.apache.commons.net.ftp.FTPFile;
 import org.apache.commons.net.ftp.FTPReply;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +16,10 @@ import com.google.common.base.Strings;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.Optional;
 
 @Slf4j
@@ -44,7 +50,8 @@ public class FtpCsvService {
             baseDir = obtenerDirectorioFTP();
         }
         log.info(baseDir);
-        return null; // Aquí deberías implementar la lógica para listar los archivos CSV.
+
+        return ListFiles(pageable); // Aquí deberías implementar la lógica para listar los archivos CSV.
     }
 
     private Optional<Conexiones> obtenerConexionFTP() {
@@ -125,6 +132,19 @@ public class FtpCsvService {
             desconectarFTP(ftp);
             throw new IOException("Error al configurar el modo pasivo", e);
         }
+    }
+
+    public Page<String> ListFiles(Pageable pageable) throws IOException {
+        FTPFile[] files = ProgEvidens.ftpCSV.listFiles();
+        List<String> csvFiles = Arrays.stream(files)
+                .filter(file -> file.getName().toLowerCase().endsWith(".csv"))
+                .map(FTPFile::getName)
+                .collect(Collectors.toList());
+
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), csvFiles.size());
+
+        return new PageImpl<>(csvFiles.subList(start, end), pageable, csvFiles.size());
     }
 
     private void desconectarFTP(FTPClient ftp) throws IOException {

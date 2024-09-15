@@ -15,6 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.net.ftp.FTPClient;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -225,13 +226,14 @@ public class EvidenciaController {
     }
 
     @GetMapping("/downloadCSV")
-    public ResponseEntity<String> downloadCSV(
+    public Page<String> downloadCSV(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id,asc") String[] sort) throws IOException {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
         ftpCsv.listCsvFiles(pageable);
-        return ResponseEntity.ok("downloadCSV");
+        return ftpCsv.listCsvFiles(pageable);
+        // return ResponseEntity.ok("downloadCSV");
     }
 
     @GetMapping("/pathZip")
