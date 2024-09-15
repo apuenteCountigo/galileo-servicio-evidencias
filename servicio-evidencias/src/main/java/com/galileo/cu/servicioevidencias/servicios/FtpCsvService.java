@@ -43,7 +43,7 @@ public class FtpCsvService {
         } else {
             baseDir = obtenerDirectorioFTP();
         }
-        log.debug(baseDir);
+        log.info(baseDir);
         return null; // Aquí deberías implementar la lógica para listar los archivos CSV.
     }
 
