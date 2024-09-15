@@ -15,6 +15,9 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.net.ftp.FTPClient;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,6 +37,7 @@ import com.galileo.cu.servicioevidencias.repositorios.EvidenciaRepository;
 import com.galileo.cu.servicioevidencias.repositorios.ProgEvidens;
 import com.galileo.cu.servicioevidencias.repositorios.UsuariosRepository;
 import com.galileo.cu.servicioevidencias.servicios.EvidenciaService;
+import com.galileo.cu.servicioevidencias.servicios.FtpCsvService;
 import com.google.common.base.Strings;
 
 import lombok.extern.slf4j.Slf4j;
@@ -55,6 +59,9 @@ public class EvidenciaController {
 
     @Autowired
     EvidenciaRepository eviRepo;
+
+    @Autowired
+    FtpCsvService ftpCsv;
 
     Dictionary errores = new Hashtable();
 
@@ -218,7 +225,12 @@ public class EvidenciaController {
     }
 
     @GetMapping("/downloadCSV")
-    public ResponseEntity<String> downloadCSV() {
+    public ResponseEntity<String> downloadCSV(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id,asc") String[] sort) throws IOException {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
+        ftpCsv.listCsvFiles(pageable);
         return ResponseEntity.ok("downloadCSV");
     }
 
