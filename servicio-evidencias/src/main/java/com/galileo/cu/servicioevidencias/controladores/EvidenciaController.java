@@ -217,6 +217,11 @@ public class EvidenciaController {
                 .body("{\"message\":\"Fallo desconocido analizando el progreso de la evidencia\"}");
     }
 
+    @GetMapping("/downloadCSV")
+    public ResponseEntity<String> downloadCSV() {
+        return ResponseEntity.ok("downloadCSV");
+    }
+
     @GetMapping("/pathZip")
     public ResponseEntity<String> pathZip(
             @RequestParam("idAuth") long idAuth) {

@@ -16,4 +16,5 @@ public class ProgEvidens {
     public static Map<Long, String> zipPendiente = new HashMap<Long, String>();
     public static FTPClient ftp = null;
     public static FTPClient ftpZip = null;
+    public static FTPClient ftpCSV = null;
 }

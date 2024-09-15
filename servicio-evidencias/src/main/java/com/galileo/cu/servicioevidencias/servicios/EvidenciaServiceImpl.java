@@ -458,7 +458,8 @@ public class EvidenciaServiceImpl implements EvidenciaService {
                     Integer.parseInt(((!Strings.isNullOrEmpty(con.getPuerto())) ? con.getPuerto() : "21")));
         } catch (Exception e) {
             ftp = null;
-            log.error("Fallo, conexión Fallida al servidor FTP " + con.getIpServicio() + ":" + con.getPuerto(), e);
+            log.error("Fallo, conexión Fallida al servidor FTP " + con.getIpServicio() + ":" + con.getPuerto(),
+                    e);
             throw new IOException(
                     "Fallo, conexión Fallida al servidor FTP " + con.getIpServicio() + ":" + con.getPuerto());
         }
@@ -474,7 +475,7 @@ public class EvidenciaServiceImpl implements EvidenciaService {
         boolean successLogin = ftp.login(con.getUsuario(), con.getPassword());
         int replyCode = ftp.getReplyCode();
         if (successLogin) {
-            log.info("La autenticación fue satizfactoria.");
+            log.info("La autenticación fue satisfactoria.");
         } else {
             log.info("Fallo intentando la autenticación con el servidor ftp");
             Desconectar(ftp);
