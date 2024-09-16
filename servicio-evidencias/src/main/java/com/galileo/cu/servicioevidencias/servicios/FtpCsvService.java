@@ -227,6 +227,7 @@ public class FtpCsvService {
             boolean success = ftp.retrieveFile(fileName, outputStream);
 
             if (success) {
+                log.info("Inicia la descarga de {} en {}", fileName, baseDir);
                 return outputStream.toByteArray();
             } else {
                 String err = "Fallo descargando el fichero: " + fileName;
