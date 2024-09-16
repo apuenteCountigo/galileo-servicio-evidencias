@@ -22,6 +22,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -40,6 +41,11 @@ import com.galileo.cu.servicioevidencias.repositorios.UsuariosRepository;
 import com.galileo.cu.servicioevidencias.servicios.EvidenciaService;
 import com.galileo.cu.servicioevidencias.servicios.FtpCsvService;
 import com.google.common.base.Strings;
+
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -234,6 +240,41 @@ public class EvidenciaController {
         ftpCsv.listCsvFiles(pageable);
         return ftpCsv.listCsvFiles(pageable);
         // return ResponseEntity.ok("downloadCSV");
+    }
+
+    @PostMapping("/listCSV")
+    public Page<String> listCSV(
+            @RequestBody List<Objetivos> objs,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id,asc") String[] sort) throws IOException {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
+        ftpCsv.listCsvFiles(pageable);
+        return ftpCsv.listCsvFiles(pageable);
+        // return ResponseEntity.ok("downloadCSV");
+    }
+
+    @GetMapping("/downloadCSV/{filename:.+}")
+    public ResponseEntity<byte[]> downloadFile(@PathVariable String filename) throws IOException {
+        try {
+            byte[] fileContent = ftpCsv.downloadFile(filename);
+
+            String contentType = "application/octet-stream";
+            String headerValue = "attachment; filename=\"" + filename + "\"";
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, headerValue)
+                    .body(fileContent);
+        } catch (IOException e) {
+            if (e.getMessage().contains("Fallo")) {
+                throw new IOException(e.getMessage());
+            }
+            String err = "Fallo general descargando el fichero: ";
+            log.error(err, e);
+            throw new IOException(err);
+            // return ResponseEntity.internalServerError().build();
+        }
     }
 
     @GetMapping("/pathZip")

@@ -171,6 +171,26 @@ public class FtpCsvService {
         return new PageImpl<>(csvFiles.subList(start, end), pageable, csvFiles.size());
     }
 
+    public byte[] downloadFile(String fileName) throws IOException {
+        FTPClient ftpClient = new FTPClient();
+        try {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            boolean success = ProgEvidens.ftpCSV.retrieveFile(fileName, outputStream);
+
+            if (success) {
+                return outputStream.toByteArray();
+            } else {
+                String err = "Fallo descargando el fichero: " + fileName;
+                log.error(err);
+                throw new IOException(err);
+            }
+        } finally {
+            if (ProgEvidens.ftpCSV.isConnected()) {
+                ProgEvidens.ftpCSV.disconnect();
+            }
+        }
+    }
+
     private void desconectarFTP(FTPClient ftp) throws IOException {
         if (ftp != null && ftp.isConnected()) {
             try {
