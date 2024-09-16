@@ -50,6 +50,14 @@ public class FtpCsvService {
             baseDir = obtenerDirectorioFTP();
         }
         log.info(baseDir);
+        try {
+            ProgEvidens.ftpCSV.changeWorkingDirectory(baseDir);
+        } catch (Exception e) {
+            String err = "Error al intentar cambiar al directorio {}";
+            log.error(err, baseDir, e);
+            desconectarFTP(ProgEvidens.ftpCSV);
+            throw new IOException(err, e);
+        }
         Page<String> listFiles = null;
         try {
             listFiles = ListFiles(pageable);
