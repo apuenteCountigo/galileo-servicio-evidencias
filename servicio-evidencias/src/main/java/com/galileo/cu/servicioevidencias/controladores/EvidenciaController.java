@@ -262,6 +262,7 @@ public class EvidenciaController {
             String contentType = "application/octet-stream";
             String headerValue = "attachment; filename=\"" + filename + "\"";
 
+            log.info("Longitud: {}", fileContent.length);
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
                     .header(HttpHeaders.CONTENT_DISPOSITION, headerValue)
