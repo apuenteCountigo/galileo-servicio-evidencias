@@ -50,8 +50,18 @@ public class FtpCsvService {
             baseDir = obtenerDirectorioFTP();
         }
         log.info(baseDir);
+        Page<String> listFiles = null;
+        try {
+            listFiles = ListFiles(pageable);
+        } catch (Exception e) {
+            String err = "Error al obtener listado de ficheros .csv";
+            log.error(err, e);
+            desconectarFTP(ProgEvidens.ftpCSV);
+            throw new IOException(err, e);
 
-        return ListFiles(pageable); // Aquí deberías implementar la lógica para listar los archivos CSV.
+        }
+        desconectarFTP(ProgEvidens.ftpCSV);
+        return listFiles;
     }
 
     private Optional<Conexiones> obtenerConexionFTP() {
@@ -80,6 +90,7 @@ public class FtpCsvService {
         } catch (Exception e) {
             String err = "Error al obtener el directorio predeterminado del servidor FTP";
             log.error(err, e);
+            desconectarFTP(ProgEvidens.ftpCSV);
             throw new IOException(err, e);
         }
     }
@@ -96,9 +107,9 @@ public class FtpCsvService {
 
         int reply = ftp.getReplyCode();
         if (!FTPReply.isPositiveCompletion(reply)) {
-            ftp.disconnect();
             String err = "Conexión fallida con el servidor FTP " + con.getIpServicio();
             log.error(err);
+            desconectarFTP(ftp);
             throw new IOException(err);
         }
 
@@ -113,12 +124,16 @@ public class FtpCsvService {
         try {
             boolean successLogin = ftp.login(con.getUsuario(), con.getPassword());
             if (!successLogin) {
-                throw new IOException("Autenticación fallida con el servidor FTP");
+                String err = "Autenticación fallida con el servidor FTP, intentando listar .csv";
+                log.error("{}", err);
+                desconectarFTP(ftp);
+                throw new IOException(err);
             }
             log.info("Autenticación exitosa con el servidor FTP");
         } catch (IOException e) {
-            String err = "Error al autenticar con el servidor FTP " + con.getIpServicio();
+            String err = "Error al autenticar con el servidor FTP " + con.getIpServicio() + ", intentando listar .csv";
             log.error(err, e);
+            desconectarFTP(ftp);
             throw new IOException(err, e);
         }
     }
@@ -151,6 +166,8 @@ public class FtpCsvService {
         if (ftp != null && ftp.isConnected()) {
             try {
                 ftp.disconnect();
+                ftp = null;
+                ProgEvidens.ftpCSV = null;
             } catch (IOException e) {
                 log.error("Error al desconectar el servidor FTP", e);
                 throw e;
