@@ -151,8 +151,9 @@ public class FtpCsvService {
 
     public Page<String> ListFiles(Pageable pageable) throws IOException {
         FTPFile[] files = ProgEvidens.ftpCSV.listFiles();
-        List<String> csvFiles = Arrays.stream(files)
-                .filter(file -> file.getName().toLowerCase().endsWith(".csv"))
+        FTPFile[] dir = ProgEvidens.ftpCSV.listDirectories();
+        List<String> csvFiles = Arrays.stream(dir)
+                // .filter(file -> file.getName().toLowerCase().endsWith(".csv"))
                 .map(FTPFile::getName)
                 .collect(Collectors.toList());
 
