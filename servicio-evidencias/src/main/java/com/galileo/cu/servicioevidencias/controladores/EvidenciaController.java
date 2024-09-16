@@ -231,8 +231,8 @@ public class EvidenciaController {
                 .body("{\"message\":\"Fallo desconocido analizando el progreso de la evidencia\"}");
     }
 
-    @GetMapping("/downloadCSV")
-    public Page<String> downloadCSV(
+    @GetMapping("/listCSV")
+    public Page<String> listCSV(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id,asc") String[] sort) throws IOException {
@@ -242,20 +242,20 @@ public class EvidenciaController {
         // return ResponseEntity.ok("downloadCSV");
     }
 
-    @PostMapping("/listCSV")
-    public Page<String> listCSV(
-            @RequestBody List<Objetivos> objs,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "id,asc") String[] sort) throws IOException {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
-        ftpCsv.listCsvFiles(pageable);
-        return ftpCsv.listCsvFiles(pageable);
-        // return ResponseEntity.ok("downloadCSV");
-    }
+    // @PostMapping("/listCSV")
+    // public Page<String> listCSV(
+    // @RequestBody List<Objetivos> objs,
+    // @RequestParam(defaultValue = "0") int page,
+    // @RequestParam(defaultValue = "10") int size,
+    // @RequestParam(defaultValue = "id,asc") String[] sort) throws IOException {
+    // Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
+    // ftpCsv.listCsvFiles(pageable);
+    // return ftpCsv.listCsvFiles(pageable);
+    // // return ResponseEntity.ok("downloadCSV");
+    // }
 
     @GetMapping("/downloadCSV/{filename:.+}")
-    public ResponseEntity<byte[]> downloadFile(@PathVariable String filename) throws IOException {
+    public ResponseEntity<byte[]> downloadCSV(@PathVariable String filename) throws IOException {
         try {
             byte[] fileContent = ftpCsv.downloadFile(filename);
 
