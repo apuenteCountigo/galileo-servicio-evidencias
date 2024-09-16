@@ -39,36 +39,38 @@ public class FtpCsvService {
     public Page<String> listCsvFiles(Pageable pageable) throws IOException {
         String baseDir = DEFAULT_DIRECTORY;
 
-        Conexiones con = obtenerConexionFTP()
+        Conexiones con = getFTPConnection()
                 .orElseThrow(() -> new IOException("No existe un servicio FTP entre las conexiones"));
 
-        conectarFTP(con);
+        FTPClient ftp = connectFTP(con, null);
 
         if (!Strings.isNullOrEmpty(con.getRuta())) {
             baseDir = con.getRuta();
         } else {
-            baseDir = obtenerDirectorioFTP();
+            baseDir = getFTPDirectory(ftp);
         }
         log.info(baseDir);
+
         try {
-            ProgEvidens.ftpCSV.changeWorkingDirectory(baseDir);
+            ftp.changeWorkingDirectory(baseDir);
         } catch (Exception e) {
-            String err = "Error al intentar cambiar al directorio {}";
+            String err = "Fallo al intentar cambiar al directorio {}";
             log.error(err, baseDir, e);
-            desconectarFTP(ProgEvidens.ftpCSV);
-            throw new IOException(err, e);
+            disconnectFTP(ftp);
+            throw new IOException(err);
         }
+
         Page<String> listFiles = null;
         try {
             listFiles = ListFiles(pageable);
         } catch (Exception e) {
             String err = "Error al obtener listado de ficheros .csv";
             log.error(err, e);
-            desconectarFTP(ProgEvidens.ftpCSV);
+            disconnectFTP(ftp);
             throw new IOException(err, e);
 
         }
-        desconectarFTP(ProgEvidens.ftpCSV);
+        disconnectFTP(ftp);
         return listFiles;
     }
 
@@ -81,6 +83,15 @@ public class FtpCsvService {
         }
     }
 
+    private Optional<Conexiones> getFTPConnection() {
+        try {
+            return Optional.ofNullable(conRepo.findFirstByServicioContaining("ftp"));
+        } catch (Exception e) {
+            log.error("Fallo al consultar las conexiones FTP en la base de datos", e);
+            return Optional.empty();
+        }
+    }
+
     private void conectarFTP(Conexiones con) throws IOException {
         if (ProgEvidens.ftpCSV == null || !ProgEvidens.ftpCSV.isConnected()) {
             try {
@@ -88,6 +99,107 @@ public class FtpCsvService {
             } catch (Exception e) {
                 log.error("Error al conectar con el servidor FTP", e);
                 throw new IOException("Error al conectar con el servidor FTP: " + e.getMessage(), e);
+            }
+        }
+    }
+
+    private FTPClient connectFTP(Conexiones con, FTPClient ftp) throws IOException {
+        if (ftp == null) {
+            ftp = new FTPClient();
+        }
+
+        if (ftp == null || !ftp.isConnected()) {
+            try {
+                ftp = makeFTPConnection(con);
+            } catch (Exception e) {
+                if (e.getMessage().contains("Fallo") || e.getMessage().contains("Falló")) {
+                    throw new IOException(e.getMessage());
+                }
+                String err = "Fallo al conectar con el servidor FTP";
+                log.error("{}", err, e);
+                throw new IOException(err);
+            }
+        }
+        return ftp;
+    }
+
+    private FTPClient makeFTPConnection(Conexiones con) throws IOException {
+        FTPClient ftp = new FTPClient();
+        try {
+            int puerto = Strings.isNullOrEmpty(con.getPuerto()) ? DEFAULT_FTP_PORT : Integer.parseInt(con.getPuerto());
+            ftp.connect(con.getIpServicio(), puerto);
+        } catch (Exception e) {
+            String err = "Fallo al intentar crear una conexión FTP {}:{}";
+            log.error(err, con.getIpServicio(), con.getPuerto(), e);
+            throw new IOException(err + con.getIpServicio());
+        }
+
+        int reply = ftp.getReplyCode();
+        if (!FTPReply.isPositiveCompletion(reply)) {
+            String err = "Conexión fallida con el servidor FTP " + con.getIpServicio();
+            log.error(err);
+            desconectarFTP(ftp);
+            throw new IOException(err);
+        }
+
+        authenticateFTP(ftp, con);
+
+        setUpPassiveMode(ftp);
+
+        return ftp;
+    }
+
+    private void authenticateFTP(FTPClient ftp, Conexiones con) throws IOException {
+        try {
+            boolean successLogin = ftp.login(con.getUsuario(), con.getPassword());
+            if (!successLogin) {
+                String err = "Fallo intentando autenticarse con el servidor FTP";
+                log.error("{}", err);
+                disconnectFTP(ftp);
+                throw new IOException(err);
+            }
+            log.info("La Autenticación con el servidor FTP, fue exitosa");
+        } catch (IOException e) {
+            String err = "Fallo intentando autenticarse con el servidor FTP";
+            log.error("{}", err, e);
+            disconnectFTP(ftp);
+            throw new IOException(err, e);
+        }
+    }
+
+    private void setUpPassiveMode(FTPClient ftp) throws IOException {
+        try {
+            ftp.enterLocalPassiveMode();
+            ftp.setControlKeepAliveTimeout(1000);
+        } catch (Exception e) {
+            String err = "Fallo al configurar el modo pasivo en la conexión FTP";
+            log.error("{}", err, e);
+            disconnectFTP(ftp);
+            throw new IOException(err, e);
+        }
+    }
+
+    private String getFTPDirectory(FTPClient ftp) throws IOException {
+        try {
+            return ftp.printWorkingDirectory();
+        } catch (Exception e) {
+            String err = "Fallo al obtener el directorio predeterminado del servidor FTP";
+            log.error(err, e);
+            disconnectFTP(ftp);
+            throw new IOException(err, e);
+        }
+    }
+
+    private void disconnectFTP(FTPClient ftp) throws IOException {
+        if (ftp != null && ftp.isConnected()) {
+            try {
+                ftp.logout();
+                ftp.disconnect();
+                ftp = null;
+            } catch (IOException e) {
+                String err = "Fallo al desconectar el servidor FTP";
+                log.error("{}", err, e);
+                throw new IOException(err);
             }
         }
     }
