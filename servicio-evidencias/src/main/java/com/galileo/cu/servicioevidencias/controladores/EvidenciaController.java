@@ -2,6 +2,7 @@ package com.galileo.cu.servicioevidencias.controladores;
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -13,7 +14,9 @@ import java.util.List;
 
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
+import org.apache.commons.net.ftp.FTPFile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -32,6 +35,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.galileo.cu.commons.models.Conexiones;
 import com.galileo.cu.commons.models.Objetivos;
 import com.galileo.cu.servicioevidencias.clientes.Dataminer;
 import com.galileo.cu.servicioevidencias.dtos.DataminerObjectOutput;
@@ -74,35 +78,6 @@ public class EvidenciaController {
 
     DataminerObjectOutput dataMinerObj;
 
-    /*
-     * @GetMapping("/tomarPosiciones")
-     * public List<Posiciones> tomarPosiciones(
-     * 
-     * @RequestParam String idUnidad,
-     * 
-     * @RequestParam String idBalizas,
-     * 
-     * @RequestParam("fechaInicio") @DateTimeFormat(iso =
-     * DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaInicio,
-     * 
-     * @RequestParam("fechaFin") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-     * LocalDateTime fechaFin){
-     * 
-     * List<Posiciones> pos;
-     * try {
-     * DateTimeFormatter dateTimeFormatter =
-     * DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-     * pos= eviServ.tomarPosiciones(idUnidad, idBalizas,
-     * fechaInicio.format(dateTimeFormatter), fechaFin.format(dateTimeFormatter));
-     * } catch (Exception e) {
-     * log.error("Fallo al Tomar Posiciones ",e.getMessage());
-     * throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-     * "Fallo al Tomar Posiciones "+e.getMessage(), null);
-     * }
-     * return pos;
-     * }
-     */
-
     @PostMapping("/generarKMLS")
     public ResponseEntity<String> generarKMLS(
             @RequestBody List<Objetivos> objs,
@@ -115,15 +90,6 @@ public class EvidenciaController {
         log.info("Fecha Inicio 1-generarKMLS:: " + fechaInicio);
         log.info("Fecha Fin 1-generarKMLS:: " + fechaFin);
 
-        /*
-         * Los Cambié a string porque en españa al recibir la hora le resta una hora
-         * 
-         * @RequestParam("fechaInicio") @DateTimeFormat(iso =
-         * DateTimeFormat.ISO.DATE_TIME) LocalDateTime fechaInicio,
-         * 
-         * @RequestParam("fechaFin") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-         * LocalDateTime fechaFin,
-         */
         try {
             token = token.replace("Bearer ", "");
             eviServ.GenerarKML(objs, tipoPrecision, fechaInicio, fechaFin, token);
@@ -174,25 +140,6 @@ public class EvidenciaController {
                             } else {
                                 log.info("zip Value sin valor");
                             }
-                            /*
-                             * ObjectMapper mapper = new ObjectMapper();
-                             * DataminerObjectOutput dtmObj = mapper.readValue(zip,
-                             * DataminerObjectOutput.class);
-                             * // dataMinerObj = objMap.readValue(zip,DataminerObjectOutput.class);
-                             * log.info("-*** dtmObj.getD()" + dtmObj.getD());
-                             */
-                            /*
-                             * log.info("-*** dataMinerObj.getD().getValue()== " +
-                             * dtmObj.getD().getValue());
-                             * log.info(dtmObj.getD().toString());
-                             * if (dtmObj != null && dtmObj.getD() != null
-                             * && !Strings.isNullOrEmpty(dtmObj.getD().getValue())) {
-                             * ProgEvidens.advertencias.replace(idAuth,
-                             * ProgEvidens.advertencias.get(idAuth) + "," + dtmObj.getD().getValue());
-                             * ProgEvidens.progEvi.replace(idAuth, 100);
-                             * ProgEvidens.zipPendiente.replace(idAuth, dtmObj.getD().getValue());
-                             * }
-                             */
                         }
                     } catch (Exception e) {
                         log.error("Fallo consultando en Dataminer el parámetro 3001 de la operación " + e.getMessage());
@@ -262,7 +209,6 @@ public class EvidenciaController {
             String contentType = "application/octet-stream";
             String headerValue = "attachment; filename=\"" + filename + "\"";
 
-            log.info("Longitud: {}", fileContent.length);
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
                     .header(HttpHeaders.CONTENT_DISPOSITION, headerValue)
@@ -274,7 +220,6 @@ public class EvidenciaController {
             String err = "Fallo general descargando el fichero: ";
             log.error(err, e);
             throw new IOException(err);
-            // return ResponseEntity.internalServerError().build();
         }
     }
 

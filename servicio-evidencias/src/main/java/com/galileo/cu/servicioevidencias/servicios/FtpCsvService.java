@@ -1,5 +1,6 @@
 package com.galileo.cu.servicioevidencias.servicios;
 
+import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
 import org.apache.commons.net.ftp.FTPReply;
@@ -211,19 +212,28 @@ public class FtpCsvService {
         } else {
             baseDir = getFTPDirectory(ftp);
         }
-        log.info(baseDir);
+        log.info("Directorio base: {}", baseDir);
 
         try {
             ftp.changeWorkingDirectory(baseDir);
+            ftp.setFileType(FTP.BINARY_FILE_TYPE); // Asegúrate de que el archivo sea tratado como binario
         } catch (Exception e) {
-            String err = "Fallo al intentar cambiar al directorio {}";
-            log.error(err, baseDir, e);
+            String err = "Fallo al intentar cambiar al directorio " + baseDir;
+            log.error(err, e);
             disconnectFTP(ftp);
             throw new IOException(err);
         }
 
-        try {
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        // Comprobación de la existencia del fichero
+        FTPFile[] files = ftp.listFiles(fileName);
+        if (files.length == 0) {
+            String err = "Fallo, el fichero {}, no existe en el servidor: ";
+            log.error(err, fileName);
+            disconnectFTP(ftp);
+            throw new IOException(err);
+        }
+
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             boolean success = ftp.retrieveFile(fileName, outputStream);
 
             if (success) {
@@ -232,7 +242,6 @@ public class FtpCsvService {
             } else {
                 String err = "Fallo descargando el fichero: " + fileName;
                 log.error(err);
-                disconnectFTP(ftp);
                 throw new IOException(err);
             }
         } finally {
