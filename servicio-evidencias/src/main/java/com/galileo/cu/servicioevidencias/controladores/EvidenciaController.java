@@ -18,6 +18,7 @@ import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -201,18 +202,19 @@ public class EvidenciaController {
     // // return ResponseEntity.ok("downloadCSV");
     // }
 
-    @GetMapping("/downloadCSV/{filename:.+}")
-    public ResponseEntity<byte[]> downloadCSV(@PathVariable String filename) throws IOException {
+    @GetMapping("/downloadCSV/{fileName}")
+    public ResponseEntity<InputStreamResource> downloadCSV(@PathVariable String fileName) throws IOException {
         try {
-            byte[] fileContent = ftpCsv.downloadFile(filename);
+            InputStream fileStream = ftpCsv.downloadFileAsStream(fileName);
+            InputStreamResource resource = new InputStreamResource(fileStream);
 
-            String contentType = "application/octet-stream";
-            String headerValue = "attachment; filename=\"" + filename + "\"";
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName);
 
             return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, headerValue)
-                    .body(fileContent);
+                    .headers(headers)
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(resource);
         } catch (IOException e) {
             if (e.getMessage().contains("Fallo")) {
                 throw new IOException(e.getMessage());

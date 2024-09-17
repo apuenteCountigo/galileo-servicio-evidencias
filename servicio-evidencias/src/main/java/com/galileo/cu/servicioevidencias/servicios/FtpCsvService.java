@@ -14,10 +14,12 @@ import com.galileo.cu.commons.models.Conexiones;
 import com.galileo.cu.servicioevidencias.repositorios.ConexionesRepository;
 import com.galileo.cu.servicioevidencias.repositorios.ProgEvidens;
 import com.google.common.base.Strings;
+
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.io.ByteArrayOutputStream;
+import java.io.FilterInputStream;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -199,7 +201,7 @@ public class FtpCsvService {
         return new PageImpl<>(csvFiles.subList(start, end), pageable, csvFiles.size());
     }
 
-    public byte[] downloadFile(String fileName) throws IOException {
+    public InputStream downloadFileAsStream(String fileName) throws IOException {
         String baseDir = DEFAULT_DIRECTORY;
 
         Conexiones con = getFTPConnection()
@@ -216,7 +218,7 @@ public class FtpCsvService {
 
         try {
             ftp.changeWorkingDirectory(baseDir);
-            ftp.setFileType(FTP.BINARY_FILE_TYPE); // Asegúrate de que el archivo sea tratado como binario
+            ftp.setFileType(FTP.BINARY_FILE_TYPE);
         } catch (Exception e) {
             String err = "Fallo al intentar cambiar al directorio " + baseDir;
             log.error(err, e);
@@ -227,25 +229,41 @@ public class FtpCsvService {
         // Comprobación de la existencia del fichero
         FTPFile[] files = ftp.listFiles(fileName);
         if (files.length == 0) {
-            String err = "Fallo, el fichero {}, no existe en el servidor: ";
+            String err = "Fallo, el fichero {}, no existe en el servidor";
             log.error(err, fileName);
             disconnectFTP(ftp);
             throw new IOException(err);
+        } else {
+            log.info("El fichero {}, existe en el servidor", fileName);
         }
 
-        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            boolean success = ftp.retrieveFile(fileName, outputStream);
-
-            if (success) {
-                log.info("Inicia la descarga de {} en {}", fileName, baseDir);
-                return outputStream.toByteArray();
-            } else {
-                String err = "Fallo descargando el fichero: " + fileName;
+        try {
+            InputStream inputStream = ftp.retrieveFileStream(fileName);
+            if (inputStream == null) {
+                String err = "Fallo al obtener el stream del fichero: " + fileName;
                 log.error(err);
                 throw new IOException(err);
             }
-        } finally {
+            log.info("Inicia la descarga de {} en {}", fileName, baseDir);
+
+            // Devolvemos un InputStream que cierra la conexión FTP cuando se cierra el
+            // stream
+            return new FilterInputStream(inputStream) {
+                @Override
+                public void close() throws IOException {
+                    try {
+                        super.close();
+                    } finally {
+                        if (!ftp.completePendingCommand()) {
+                            log.warn("Fallo al completar la operación FTP");
+                        }
+                        disconnectFTP(ftp);
+                    }
+                }
+            };
+        } catch (IOException e) {
             disconnectFTP(ftp);
+            throw e;
         }
     }
 }
