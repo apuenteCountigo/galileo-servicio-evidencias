@@ -263,7 +263,8 @@ public class FtpCsvService {
         }
 
         // Comprobación de la existencia del fichero
-        fileName = fileName.replace(" ", "%20");
+        // fileName = fileName.replace(" ", "%20");
+        fileName = "\"" + fileName + "\"";
         FTPFile[] files = ftp.listFiles(fileName);
         if (files.length == 0) {
             String err = "Fallo, el fichero " + fileName + ", no existe en el servidor";
