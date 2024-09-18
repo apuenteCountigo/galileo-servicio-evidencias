@@ -14,6 +14,7 @@ import java.util.List;
 
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
@@ -46,6 +47,7 @@ import com.galileo.cu.servicioevidencias.repositorios.UsuariosRepository;
 import com.galileo.cu.servicioevidencias.servicios.EvidenciaService;
 import com.galileo.cu.servicioevidencias.servicios.FtpCsvService;
 import com.google.common.base.Strings;
+import com.google.common.util.concurrent.ExecutionError;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -181,26 +183,26 @@ public class EvidenciaController {
 
     @GetMapping("/listCSV")
     public Page<String> listCSV(
+            @RequestParam(defaultValue = "") String unidadName,
+            @RequestParam(defaultValue = "") String objetivoName,
+            @RequestParam(defaultValue = "") String operacionName,
+            @RequestParam(defaultValue = "") String fechaInicio,
+            @RequestParam(defaultValue = "") String fechaFin,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id,asc") String[] sort) throws IOException {
+        if (StringUtils.isEmpty(unidadName) || StringUtils.isEmpty(objetivoName) || StringUtils.isEmpty(operacionName)
+                || StringUtils.isEmpty(fechaInicio) || StringUtils.isEmpty(fechaFin)) {
+            String err = "Fallo, faltan parámetros en la petición";
+            log.error("{}, intentando listar los csv", err);
+            throw new ExecutionError(err, null);
+        }
+
         Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
         ftpCsv.listCsvFiles(pageable);
         return ftpCsv.listCsvFiles(pageable);
         // return ResponseEntity.ok("downloadCSV");
     }
-
-    // @PostMapping("/listCSV")
-    // public Page<String> listCSV(
-    // @RequestBody List<Objetivos> objs,
-    // @RequestParam(defaultValue = "0") int page,
-    // @RequestParam(defaultValue = "10") int size,
-    // @RequestParam(defaultValue = "id,asc") String[] sort) throws IOException {
-    // Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
-    // ftpCsv.listCsvFiles(pageable);
-    // return ftpCsv.listCsvFiles(pageable);
-    // // return ResponseEntity.ok("downloadCSV");
-    // }
 
     @GetMapping("/downloadCSV/{fileName}")
     public ResponseEntity<InputStreamResource> downloadCSV(@PathVariable String fileName) throws IOException {
