@@ -48,7 +48,7 @@ public class FtpCsvService {
             String unidadName,
             String operacionName,
             String fechaInicio,
-            String fechaFin) throws Exception {
+            String fechaFin) throws IOException {
         String baseDir = DEFAULT_DIRECTORY;
 
         String fechaInicioFormateada = convertirFecha(fechaInicio);
@@ -301,7 +301,7 @@ public class FtpCsvService {
                 + fechaInicioFormateada + "-" + fechaFinFormateada + ")";
     }
 
-    private List<String> getDirectoriesFTP(FTPClient ftp, String path, Pageable pageable) throws Exception {
+    private List<String> getDirectoriesFTP(FTPClient ftp, String path, Pageable pageable) throws IOException {
         List<String> directorios = new ArrayList<>();
         FTPFile[] dirs = ftp.listDirectories(path);
         // FTPFile[] files = ftp.listFiles(path);
