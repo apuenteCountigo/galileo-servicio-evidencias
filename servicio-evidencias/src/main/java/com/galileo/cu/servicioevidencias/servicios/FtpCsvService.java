@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.galileo.cu.commons.models.Conexiones;
+import com.galileo.cu.servicioevidencias.dtos.TreeNode;
 import com.galileo.cu.servicioevidencias.repositorios.ConexionesRepository;
 import com.galileo.cu.servicioevidencias.repositorios.ProgEvidens;
 import com.google.common.base.Strings;
@@ -22,6 +23,7 @@ import java.io.FilterInputStream;
 import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -46,18 +48,14 @@ public class FtpCsvService {
             String unidadName,
             String operacionName,
             String fechaInicio,
-            String fechaFin) throws IOException {
+            String fechaFin) throws Exception {
         String baseDir = DEFAULT_DIRECTORY;
 
         String fechaInicioFormateada = convertirFecha(fechaInicio);
         String fechaFinFormateada = convertirFecha(fechaFin);
 
-        // 2. Crear path
-        String path = crearPath(unidadName, operacionName);
-
         log.info(fechaInicioFormateada);
         log.info(fechaFinFormateada);
-        log.info(path);
 
         Conexiones con = getFTPConnection()
                 .orElseThrow(() -> new IOException("No existe un servicio FTP entre las conexiones"));
@@ -80,6 +78,14 @@ public class FtpCsvService {
             throw new IOException(err);
         }
 
+        // 2. Crear path
+        String path = baseDir + "/" + crearPath(unidadName, operacionName, fechaInicioFormateada, fechaFinFormateada);
+
+        log.info(path);
+
+        List<String> directories = getDirectoriesFTP(ftp, path, pageable);
+        log.info(directories.get(0));
+
         Page<String> listFiles = null;
         try {
             listFiles = ListFiles(ftp, pageable);
@@ -92,15 +98,6 @@ public class FtpCsvService {
         }
         disconnectFTP(ftp);
         return listFiles;
-    }
-
-    private String convertirFecha(String fecha) {
-        LocalDateTime dateTime = LocalDateTime.parse(fecha, DateTimeFormatter.ISO_DATE_TIME);
-        return dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH_mm_ss"));
-    }
-
-    private String crearPath(String unidadName, String operacionName) {
-        return "UNIDADES/" + unidadName + "/INFORMES " + operacionName + "/PERSONALIZADOS";
     }
 
     private Optional<Conexiones> getFTPConnection() {
@@ -291,5 +288,53 @@ public class FtpCsvService {
             disconnectFTP(ftp);
             throw e;
         }
+    }
+
+    private String convertirFecha(String fecha) {
+        LocalDateTime dateTime = LocalDateTime.parse(fecha, DateTimeFormatter.ISO_DATE_TIME);
+        return dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH_mm_ss"));
+    }
+
+    private String crearPath(String unidadName, String operacionName, String fechaInicioFormateada,
+            String fechaFinFormateada) {
+        return "UNIDADES/" + unidadName + "/INFORMES " + operacionName + "/PERSONALIZADOS/" + operacionName + "("
+                + fechaInicioFormateada + "-" + fechaFinFormateada + ")";
+    }
+
+    private List<String> getDirectoriesFTP(FTPClient ftp, String path, Pageable pageable) throws Exception {
+        List<String> directorios = new ArrayList<>();
+        FTPFile[] dirs = ftp.listDirectories(path);
+        // FTPFile[] files = ftp.listFiles(path);
+        for (FTPFile dir : dirs) {
+            if (dir.isDirectory() && !dir.getName().equals("KMLS")) {
+                directorios.add(dir.getName());
+            }
+        }
+
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), directorios.size());
+        return directorios.subList(start, end);
+    }
+
+    private TreeNode treeBuild(FTPClient ftp, String basePath, List<String> directorios) throws Exception {
+        TreeNode root = new TreeNode("root", "0", new ArrayList<>(), true);
+
+        for (int i = 0; i < directorios.size(); i++) {
+            String directorio = directorios.get(i);
+            TreeNode dirNode = new TreeNode(directorio, String.valueOf(i + 1), new ArrayList<>(), true);
+
+            FTPFile[] archivos = ftp.listFiles(basePath + "/" + directorio);
+            for (int j = 0; j < archivos.length; j++) {
+                FTPFile archivo = archivos[j];
+                if (archivo.getName().toLowerCase().endsWith(".csv")) {
+                    TreeNode fileNode = new TreeNode(archivo.getName(), (i + 1) + "-" + (j + 1), null, false);
+                    dirNode.getChildren().add(fileNode);
+                }
+            }
+
+            root.getChildren().add(dirNode);
+        }
+
+        return root;
     }
 }
