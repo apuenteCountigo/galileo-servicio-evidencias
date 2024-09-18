@@ -341,30 +341,33 @@ public class FtpCsvService {
     private Page<TreeNode> treeBuild(FTPClient ftp, String baseDir, String basePath, List<String> directorios,
             Pageable pageable)
             throws IOException {
-        TreeNode root = new TreeNode("root", "0", new ArrayList<>(), true);
+        // TreeNode root = new TreeNode("root", "0", new ArrayList<>(), true, false);
+        List<TreeNode> root = new ArrayList<>();
 
         for (int i = 0; i < directorios.size(); i++) {
             String directorio = directorios.get(i);
-            TreeNode dirNode = new TreeNode(directorio, basePath + "/" + directorio, new ArrayList<>(), true);
+            TreeNode dirNode = new TreeNode(directorio, "folder-" + basePath + "/" + directorio, new ArrayList<>(),
+                    true, false);
             ftp.changeWorkingDirectory(basePath + "/" + directorio);
 
             FTPFile[] archivos = ftp.listFiles();
             for (int j = 0; j < archivos.length; j++) {
                 FTPFile archivo = archivos[j];
                 if (archivo.getName().toLowerCase().endsWith(".csv")) {
-                    TreeNode fileNode = new TreeNode(archivo.getName(), basePath + "/" + directorio, null, false);
+                    TreeNode fileNode = new TreeNode(archivo.getName(), "file-" + basePath + "/" + directorio, null,
+                            false,
+                            false);
                     dirNode.getChildren().add(fileNode);
                 }
             }
 
-            root.getChildren().add(dirNode);
+            root.add(dirNode);
         }
 
         ftp.changeWorkingDirectory(baseDir);
         String json = objectMapper.writeValueAsString(root);
         log.info("Contenido del tree: {}", json);
 
-        return new PageImpl<>(root.getChildren(), pageable, root.getChildren().size());
-        // return root;
+        return new PageImpl<>(root, pageable, root.size());
     }
 }

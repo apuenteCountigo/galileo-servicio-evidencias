@@ -14,4 +14,5 @@ public class TreeNode {
     public String key;
     public List<TreeNode> children;
     public boolean isLeaf;
+    public boolean isExpanded;
 }
