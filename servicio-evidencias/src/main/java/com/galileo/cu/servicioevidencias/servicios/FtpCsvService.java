@@ -237,7 +237,7 @@ public class FtpCsvService {
         return new PageImpl<>(csvFiles.subList(start, end), pageable, csvFiles.size());
     }
 
-    public InputStream downloadFileAsStream(String path, String fileName) throws IOException {
+    public InputStream downloadFileAsStream(String fileName) throws IOException {
         String baseDir = DEFAULT_DIRECTORY;
 
         Conexiones con = getFTPConnection()
@@ -250,12 +250,10 @@ public class FtpCsvService {
         } else {
             baseDir = getFTPDirectory(ftp);
         }
+        log.info("Directorio base: {}", baseDir);
 
         try {
             ftp.changeWorkingDirectory(baseDir);
-            log.info("Directorio base: {}", baseDir);
-            // ftp.changeWorkingDirectory(path);
-            // log.info("Directorio del fichero: {}", path);
             ftp.setFileType(FTP.BINARY_FILE_TYPE);
         } catch (Exception e) {
             String err = "Fallo al intentar cambiar al directorio " + baseDir;
@@ -267,8 +265,8 @@ public class FtpCsvService {
         // Comprobación de la existencia del fichero
         FTPFile[] files = ftp.listFiles(fileName);
         if (files.length == 0) {
-            String err = "Fallo, el fichero " + fileName + ", no existe en el servidor. " + ftp.printWorkingDirectory();
-            log.error(err);
+            String err = "Fallo, el fichero {}, no existe en el servidor";
+            log.error(err, fileName);
             disconnectFTP(ftp);
             throw new IOException(err);
         } else {
