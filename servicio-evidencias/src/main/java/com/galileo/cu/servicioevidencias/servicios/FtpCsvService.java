@@ -305,7 +305,7 @@ public class FtpCsvService {
 
     private String crearPath(String unidadName, String operacionName, String fechaInicioFormateada,
             String fechaFinFormateada) {
-d        return "/UNIDADES/" + unidadName + "/INFORMES " + operacionName + "/PERSONALIZADOS/" + operacionName + "("
+        return "/UNIDADES/" + unidadName + "/INFORMES " + operacionName + "/PERSONALIZADOS/" + operacionName + "("
                 + fechaInicioFormateada + "-" + fechaFinFormateada + ")";
     }
 
