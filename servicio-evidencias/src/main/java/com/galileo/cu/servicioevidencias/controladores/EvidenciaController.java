@@ -208,9 +208,10 @@ public class EvidenciaController {
     }
 
     @GetMapping("/downloadCSV/{fileName}")
-    public ResponseEntity<InputStreamResource> downloadCSV(@PathVariable String fileName) throws IOException {
+    public ResponseEntity<InputStreamResource> downloadCSV(@RequestParam String path, @PathVariable String fileName)
+            throws IOException {
         try {
-            InputStream fileStream = ftpCsv.downloadFileAsStream(fileName);
+            InputStream fileStream = ftpCsv.downloadFileAsStream(path, fileName);
             InputStreamResource resource = new InputStreamResource(fileStream);
 
             HttpHeaders headers = new HttpHeaders();

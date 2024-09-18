@@ -237,7 +237,7 @@ public class FtpCsvService {
         return new PageImpl<>(csvFiles.subList(start, end), pageable, csvFiles.size());
     }
 
-    public InputStream downloadFileAsStream(String fileName) throws IOException {
+    public InputStream downloadFileAsStream(String path, String fileName) throws IOException {
         String baseDir = DEFAULT_DIRECTORY;
 
         Conexiones con = getFTPConnection()
@@ -254,6 +254,7 @@ public class FtpCsvService {
 
         try {
             ftp.changeWorkingDirectory(baseDir);
+            ftp.changeWorkingDirectory(path);
             ftp.setFileType(FTP.BINARY_FILE_TYPE);
         } catch (Exception e) {
             String err = "Fallo al intentar cambiar al directorio " + baseDir;
