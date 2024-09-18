@@ -320,7 +320,7 @@ public class FtpCsvService {
         for (FTPFile dir : dirs) {
             if (dir.isDirectory() && !dir.getName().equals("KMLS") && !dir.getName().equals(".")
                     && !dir.getName().equals("..")) {
-                log.info(dir.getName());
+                log.info("carpeta:: " + dir.getName());
                 directorios.add(dir.getName());
             }
         }
