@@ -318,9 +318,9 @@ public class FtpCsvService {
         FTPFile[] dirs = ftp.listFiles();
         log.info("dirs.length = {}", dirs.length);
         for (FTPFile dir : dirs) {
-            log.info(dir.getName());
             if (dir.isDirectory() && !dir.getName().equals("KMLS") && !dir.getName().equals(".")
                     && !dir.getName().equals("..")) {
+                log.info(dir.getName());
                 directorios.add(dir.getName());
             }
         }
