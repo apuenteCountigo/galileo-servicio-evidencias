@@ -86,7 +86,7 @@ public class FtpCsvService {
 
         List<String> directories = getDirectoriesFTP(ftp, baseDir, path, pageable);
         if (directories.size() > 0) {
-            log.info(directories.get(0));
+            log.info("Primer directorio: {}, Cantidad: {}", directories.get(0), directories.size());
         } else {
             String err = "Fallo, no existen evidencias generadas";
             log.error("{}, ", err);
@@ -328,7 +328,8 @@ public class FtpCsvService {
         ftp.changeWorkingDirectory(baseDir);
 
         int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), directorios.size());
+        int end = Math.min((start + 2), directorios.size());
+        // int end = Math.min((start + pageable.getPageSize()), directorios.size());
         return directorios.subList(start, end);
     }
 
