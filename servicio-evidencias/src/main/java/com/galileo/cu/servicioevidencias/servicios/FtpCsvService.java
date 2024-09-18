@@ -265,8 +265,8 @@ public class FtpCsvService {
         // Comprobación de la existencia del fichero
         FTPFile[] files = ftp.listFiles(fileName);
         if (files.length == 0) {
-            String err = "Fallo, el fichero {}, no existe en el servidor";
-            log.error(err, fileName);
+            String err = "Fallo, el fichero " + fileName + ", no existe en el servidor";
+            log.error(err);
             disconnectFTP(ftp);
             throw new IOException(err);
         } else {
