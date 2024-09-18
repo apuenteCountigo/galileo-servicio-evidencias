@@ -346,16 +346,16 @@ public class FtpCsvService {
 
         for (int i = 0; i < directorios.size(); i++) {
             String directorio = directorios.get(i);
-            TreeNode dirNode = new TreeNode(directorio, "folder-" + basePath + "/" + directorio, new ArrayList<>(),
-                    true, false);
+            TreeNode dirNode = new TreeNode(directorio, basePath + "/" + directorio, new ArrayList<>(),
+                    false, false);
             ftp.changeWorkingDirectory(basePath + "/" + directorio);
 
             FTPFile[] archivos = ftp.listFiles();
             for (int j = 0; j < archivos.length; j++) {
                 FTPFile archivo = archivos[j];
                 if (archivo.getName().toLowerCase().endsWith(".csv")) {
-                    TreeNode fileNode = new TreeNode(archivo.getName(), "file-" + basePath + "/" + directorio, null,
-                            false,
+                    TreeNode fileNode = new TreeNode(archivo.getName(), basePath + "/" + directorio, null,
+                            true,
                             false);
                     dirNode.getChildren().add(fileNode);
                 }
