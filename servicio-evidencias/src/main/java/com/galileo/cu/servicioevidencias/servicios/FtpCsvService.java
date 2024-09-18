@@ -343,10 +343,10 @@ public class FtpCsvService {
 
         for (int i = 0; i < directorios.size(); i++) {
             String directorio = directorios.get(i);
-            TreeNode dirNode = new TreeNode(directorio, basePath, new ArrayList<>(), true);
-            ftp.changeWorkingDirectory(basePath);
+            TreeNode dirNode = new TreeNode(directorio, basePath + "/" + directorio, new ArrayList<>(), true);
+            ftp.changeWorkingDirectory(basePath + "/" + directorio);
 
-            FTPFile[] archivos = ftp.listFiles(basePath + "/" + directorio);
+            FTPFile[] archivos = ftp.listFiles();
             for (int j = 0; j < archivos.length; j++) {
                 FTPFile archivo = archivos[j];
                 if (archivo.getName().toLowerCase().endsWith(".csv")) {
