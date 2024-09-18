@@ -84,7 +84,7 @@ public class FtpCsvService {
 
         log.info(path);
 
-        List<String> directories = getDirectoriesFTP(ftp, path, pageable);
+        List<String> directories = getDirectoriesFTP(ftp, baseDir, path, pageable);
         if (directories.size() > 0) {
             log.info(directories.get(0));
         } else {
@@ -305,12 +305,13 @@ public class FtpCsvService {
 
     private String crearPath(String unidadName, String operacionName, String fechaInicioFormateada,
             String fechaFinFormateada) {
-        return "UNIDADES/" + unidadName + "/INFORMES Operacion Julio3";// + operacionName;// + "/PERSONALIZADOS/" +
-        // operacionName + "("
-        // + fechaInicioFormateada + "-" + fechaFinFormateada + ")";
+        return "UNIDADES/" + unidadName + "/INFORMES " + operacionName + "/PERSONALIZADOS/" +
+                operacionName + "("
+                + fechaInicioFormateada + "-" + fechaFinFormateada + ")";
     }
 
-    private List<String> getDirectoriesFTP(FTPClient ftp, String path, Pageable pageable) throws IOException {
+    private List<String> getDirectoriesFTP(FTPClient ftp, String baseDir, String path, Pageable pageable)
+            throws IOException {
         List<String> directorios = new ArrayList<>();
         // FTPFile[] dirs = ftp.listDirectories(path);
         ftp.changeWorkingDirectory(path);
@@ -318,10 +319,13 @@ public class FtpCsvService {
         log.info("dirs.length = {}", dirs.length);
         for (FTPFile dir : dirs) {
             log.info(dir.getName());
-            if (dir.isDirectory() && !dir.getName().equals("KMLS")) {
+            if (dir.isDirectory() && !dir.getName().equals("KMLS") && !dir.getName().equals(".")
+                    && !dir.getName().equals("..")) {
                 directorios.add(dir.getName());
             }
         }
+
+        ftp.changeWorkingDirectory(baseDir);
 
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), directorios.size());
