@@ -10,6 +10,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.galileo.cu.commons.models.Conexiones;
 import com.galileo.cu.servicioevidencias.dtos.TreeNode;
 import com.galileo.cu.servicioevidencias.repositorios.ConexionesRepository;
@@ -37,6 +38,7 @@ public class FtpCsvService {
 
     private static final String DEFAULT_DIRECTORY = "/";
     private static final int DEFAULT_FTP_PORT = 21;
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
     public FtpCsvService(ConexionesRepository conRepo) {
@@ -93,6 +95,8 @@ public class FtpCsvService {
             disconnectFTP(ftp);
             throw new IOException(err);
         }
+
+        TreeNode tree = treeBuild(ftp, baseDir, path, directories);
 
         Page<String> listFiles = null;
         try {
@@ -333,24 +337,30 @@ public class FtpCsvService {
         return directorios.subList(start, end);
     }
 
-    private TreeNode treeBuild(FTPClient ftp, String basePath, List<String> directorios) throws Exception {
+    private TreeNode treeBuild(FTPClient ftp, String baseDir, String basePath, List<String> directorios)
+            throws IOException {
         TreeNode root = new TreeNode("root", "0", new ArrayList<>(), true);
 
         for (int i = 0; i < directorios.size(); i++) {
             String directorio = directorios.get(i);
-            TreeNode dirNode = new TreeNode(directorio, String.valueOf(i + 1), new ArrayList<>(), true);
+            TreeNode dirNode = new TreeNode(directorio, basePath, new ArrayList<>(), true);
+            ftp.changeWorkingDirectory(basePath);
 
             FTPFile[] archivos = ftp.listFiles(basePath + "/" + directorio);
             for (int j = 0; j < archivos.length; j++) {
                 FTPFile archivo = archivos[j];
                 if (archivo.getName().toLowerCase().endsWith(".csv")) {
-                    TreeNode fileNode = new TreeNode(archivo.getName(), (i + 1) + "-" + (j + 1), null, false);
+                    TreeNode fileNode = new TreeNode(archivo.getName(), basePath + "/" + directorio, null, false);
                     dirNode.getChildren().add(fileNode);
                 }
             }
 
             root.getChildren().add(dirNode);
         }
+
+        ftp.changeWorkingDirectory(baseDir);
+        String json = objectMapper.writeValueAsString(root);
+        log.info("Contenido del tree: {}", json);
 
         return root;
     }
