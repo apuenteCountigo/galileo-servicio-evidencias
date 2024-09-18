@@ -41,6 +41,7 @@ import com.galileo.cu.commons.models.Conexiones;
 import com.galileo.cu.commons.models.Objetivos;
 import com.galileo.cu.servicioevidencias.clientes.Dataminer;
 import com.galileo.cu.servicioevidencias.dtos.DataminerObjectOutput;
+import com.galileo.cu.servicioevidencias.dtos.TreeNode;
 import com.galileo.cu.servicioevidencias.repositorios.EvidenciaRepository;
 import com.galileo.cu.servicioevidencias.repositorios.ProgEvidens;
 import com.galileo.cu.servicioevidencias.repositorios.UsuariosRepository;
@@ -182,7 +183,7 @@ public class EvidenciaController {
     }
 
     @GetMapping("/listCSV")
-    public Page<String> listCSV(
+    public Page<TreeNode> listCSV(
             @RequestParam(defaultValue = "") String unidadName,
             @RequestParam(defaultValue = "") String objetivoName,
             @RequestParam(defaultValue = "") String operacionName,
