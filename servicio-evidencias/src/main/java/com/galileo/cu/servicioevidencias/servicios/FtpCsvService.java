@@ -20,6 +20,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.io.FilterInputStream;
 import java.io.InputStream;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -39,8 +41,23 @@ public class FtpCsvService {
         this.conRepo = conRepo;
     }
 
-    public Page<String> listCsvFiles(Pageable pageable) throws IOException {
+    public Page<String> listCsvFiles(
+            Pageable pageable,
+            String unidadName,
+            String operacionName,
+            String fechaInicio,
+            String fechaFin) throws IOException {
         String baseDir = DEFAULT_DIRECTORY;
+
+        String fechaInicioFormateada = convertirFecha(fechaInicio);
+        String fechaFinFormateada = convertirFecha(fechaFin);
+
+        // 2. Crear path
+        String path = crearPath(unidadName, operacionName);
+
+        log.info(fechaInicioFormateada);
+        log.info(fechaFinFormateada);
+        log.info(path);
 
         Conexiones con = getFTPConnection()
                 .orElseThrow(() -> new IOException("No existe un servicio FTP entre las conexiones"));
@@ -75,6 +92,15 @@ public class FtpCsvService {
         }
         disconnectFTP(ftp);
         return listFiles;
+    }
+
+    private String convertirFecha(String fecha) {
+        LocalDateTime dateTime = LocalDateTime.parse(fecha, DateTimeFormatter.ISO_DATE_TIME);
+        return dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH_mm_ss"));
+    }
+
+    private String crearPath(String unidadName, String operacionName) {
+        return "UNIDADES/" + unidadName + "/INFORMES " + operacionName + "/PERSONALIZADOS";
     }
 
     private Optional<Conexiones> getFTPConnection() {

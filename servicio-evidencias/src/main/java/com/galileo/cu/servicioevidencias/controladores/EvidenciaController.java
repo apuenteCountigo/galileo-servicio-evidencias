@@ -199,8 +199,8 @@ public class EvidenciaController {
         }
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
-        ftpCsv.listCsvFiles(pageable);
-        return ftpCsv.listCsvFiles(pageable);
+        // ftpCsv.listCsvFiles(pageable);
+        return ftpCsv.listCsvFiles(pageable, unidadName, operacionName, fechaInicio, fechaFin);
         // return ResponseEntity.ok("downloadCSV");
     }
 
