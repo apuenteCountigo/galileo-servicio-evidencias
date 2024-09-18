@@ -305,15 +305,17 @@ public class FtpCsvService {
 
     private String crearPath(String unidadName, String operacionName, String fechaInicioFormateada,
             String fechaFinFormateada) {
-        return "/UNIDADES/" + unidadName + "/INFORMES " + operacionName + "/PERSONALIZADOS/" + operacionName + "("
+        return "UNIDADES/" + unidadName + "/INFORMES " + operacionName + "/PERSONALIZADOS/" + operacionName + "("
                 + fechaInicioFormateada + "-" + fechaFinFormateada + ")";
     }
 
     private List<String> getDirectoriesFTP(FTPClient ftp, String path, Pageable pageable) throws IOException {
         List<String> directorios = new ArrayList<>();
-        FTPFile[] dirs = ftp.listDirectories(path);
-        // FTPFile[] files = ftp.listFiles(path);
+        // FTPFile[] dirs = ftp.listDirectories(path);
+        FTPFile[] dirs = ftp.listFiles(path);
+        log.info("dirs.length = {}", dirs.length);
         for (FTPFile dir : dirs) {
+            log.info(dir.getName());
             if (dir.isDirectory() && !dir.getName().equals("KMLS")) {
                 directorios.add(dir.getName());
             }
