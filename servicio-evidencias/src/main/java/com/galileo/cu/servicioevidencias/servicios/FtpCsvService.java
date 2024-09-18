@@ -84,13 +84,20 @@ public class FtpCsvService {
         log.info(path);
 
         List<String> directories = getDirectoriesFTP(ftp, path, pageable);
-        log.info(directories.get(0));
+        if (directories.size() > 0) {
+            log.info(directories.get(0));
+        } else {
+            String err = "Fallo, no existen evidencias generadas";
+            log.error("{}, ", err);
+            disconnectFTP(ftp);
+            throw new IOException(err);
+        }
 
         Page<String> listFiles = null;
         try {
             listFiles = ListFiles(ftp, pageable);
         } catch (Exception e) {
-            String err = "Error al obtener listado de ficheros .csv";
+            String err = "Fallo al obtener listado de ficheros .csv";
             log.error(err, e);
             disconnectFTP(ftp);
             throw new IOException(err, e);
