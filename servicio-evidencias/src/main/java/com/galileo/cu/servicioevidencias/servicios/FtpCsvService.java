@@ -313,7 +313,8 @@ public class FtpCsvService {
     private List<String> getDirectoriesFTP(FTPClient ftp, String path, Pageable pageable) throws IOException {
         List<String> directorios = new ArrayList<>();
         // FTPFile[] dirs = ftp.listDirectories(path);
-        FTPFile[] dirs = ftp.listFiles(path);
+        ftp.changeWorkingDirectory(path);
+        FTPFile[] dirs = ftp.listFiles();
         log.info("dirs.length = {}", dirs.length);
         for (FTPFile dir : dirs) {
             log.info(dir.getName());
