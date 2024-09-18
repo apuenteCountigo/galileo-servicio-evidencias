@@ -191,8 +191,10 @@ public class EvidenciaController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id,asc") String[] sort) throws IOException {
-        if (StringUtils.isEmpty(unidadName) || StringUtils.isEmpty(objetivoName) || StringUtils.isEmpty(operacionName)
-                || StringUtils.isEmpty(fechaInicio) || StringUtils.isEmpty(fechaFin)) {
+        if (StringUtils.isEmpty(unidadName) ||
+                StringUtils.isEmpty(operacionName) ||
+                StringUtils.isEmpty(fechaInicio) ||
+                StringUtils.isEmpty(fechaFin)) {
             String err = "Fallo, faltan parámetros en la petición";
             log.error("{}, intentando listar los csv", err);
             throw new ExecutionError(err, null);
