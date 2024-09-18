@@ -254,8 +254,8 @@ public class FtpCsvService {
         try {
             ftp.changeWorkingDirectory(baseDir);
             log.info("Directorio base: {}", baseDir);
-            ftp.changeWorkingDirectory(path);
-            log.info("Directorio del fichero: {}", path);
+            // ftp.changeWorkingDirectory(path);
+            // log.info("Directorio del fichero: {}", path);
             ftp.setFileType(FTP.BINARY_FILE_TYPE);
         } catch (Exception e) {
             String err = "Fallo al intentar cambiar al directorio " + baseDir;
