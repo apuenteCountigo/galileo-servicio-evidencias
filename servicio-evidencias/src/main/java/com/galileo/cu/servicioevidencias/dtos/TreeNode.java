@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class TreeNode {
-    private String title;
-    private String key;
-    private List<TreeNode> children;
-    private boolean isLeaf;
+    public String title;
+    public String key;
+    public List<TreeNode> children;
+    public boolean isLeaf;
 }

@@ -45,7 +45,7 @@ public class FtpCsvService {
         this.conRepo = conRepo;
     }
 
-    public Page<String> listCsvFiles(
+    public Page<TreeNode> listCsvFiles(
             Pageable pageable,
             String unidadName,
             String operacionName,
@@ -96,7 +96,7 @@ public class FtpCsvService {
             throw new IOException(err);
         }
 
-        TreeNode tree = treeBuild(ftp, baseDir, path, directories);
+        Page<TreeNode> tree = treeBuild(ftp, baseDir, path, directories, pageable);
 
         Page<String> listFiles = null;
         try {
@@ -109,7 +109,8 @@ public class FtpCsvService {
 
         }
         disconnectFTP(ftp);
-        return listFiles;
+        return tree;
+        // return listFiles;
     }
 
     private Optional<Conexiones> getFTPConnection() {
@@ -337,7 +338,8 @@ public class FtpCsvService {
         return directorios.subList(start, end);
     }
 
-    private TreeNode treeBuild(FTPClient ftp, String baseDir, String basePath, List<String> directorios)
+    private Page<TreeNode> treeBuild(FTPClient ftp, String baseDir, String basePath, List<String> directorios,
+            Pageable pageable)
             throws IOException {
         TreeNode root = new TreeNode("root", "0", new ArrayList<>(), true);
 
@@ -362,6 +364,7 @@ public class FtpCsvService {
         String json = objectMapper.writeValueAsString(root);
         log.info("Contenido del tree: {}", json);
 
-        return root;
+        return new PageImpl<>(root.getChildren(), pageable, root.getChildren().size());
+        // return root;
     }
 }
