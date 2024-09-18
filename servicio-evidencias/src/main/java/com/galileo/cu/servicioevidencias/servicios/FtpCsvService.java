@@ -79,7 +79,7 @@ public class FtpCsvService {
         }
 
         // 2. Crear path
-        String path = baseDir + "/" + crearPath(unidadName, operacionName, fechaInicioFormateada, fechaFinFormateada);
+        String path = crearPath(unidadName, operacionName, fechaInicioFormateada, fechaFinFormateada);
 
         log.info(path);
 
