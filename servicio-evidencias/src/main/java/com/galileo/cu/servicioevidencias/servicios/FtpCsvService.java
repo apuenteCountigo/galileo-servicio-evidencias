@@ -305,8 +305,9 @@ public class FtpCsvService {
 
     private String crearPath(String unidadName, String operacionName, String fechaInicioFormateada,
             String fechaFinFormateada) {
-        return "UNIDADES/" + unidadName + "/INFORMES " + operacionName + "/PERSONALIZADOS/" + operacionName + "("
-                + fechaInicioFormateada + "-" + fechaFinFormateada + ")";
+        return "UNIDADES/";// + unidadName + "/INFORMES " + operacionName + "/PERSONALIZADOS/" +
+                           // operacionName + "("
+        // + fechaInicioFormateada + "-" + fechaFinFormateada + ")";
     }
 
     private List<String> getDirectoriesFTP(FTPClient ftp, String path, Pageable pageable) throws IOException {
