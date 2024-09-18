@@ -237,7 +237,7 @@ public class FtpCsvService {
         return new PageImpl<>(csvFiles.subList(start, end), pageable, csvFiles.size());
     }
 
-    public InputStream downloadFileAsStream(String fileName) throws IOException {
+    public InputStream downloadFileAsStream(String path, String fileName) throws IOException {
         String baseDir = DEFAULT_DIRECTORY;
 
         Conexiones con = getFTPConnection()
@@ -254,6 +254,9 @@ public class FtpCsvService {
 
         try {
             ftp.changeWorkingDirectory(baseDir);
+            log.info("Directorio base: {}", baseDir);
+            ftp.changeWorkingDirectory(path);
+            log.info("Directorio del fichero: {}", path);
             ftp.setFileType(FTP.BINARY_FILE_TYPE);
         } catch (Exception e) {
             String err = "Fallo al intentar cambiar al directorio " + baseDir;
@@ -263,9 +266,6 @@ public class FtpCsvService {
         }
 
         // Comprobación de la existencia del fichero
-        // fileName = fileName.replace(" ", "%20");
-        // fileName = "\"" + fileName + "\"";
-        // FTPFile[] files = ftp.listFiles(fileName);
         String[] fileNames = ftp.listNames(fileName);
         if (fileNames == null || fileNames.length == 0) {
             String err = "Fallo, el fichero " + fileName + ", no existe en el servidor";
@@ -294,7 +294,7 @@ public class FtpCsvService {
                         super.close();
                     } finally {
                         if (!ftp.completePendingCommand()) {
-                            log.warn("Fallo al completar la operación FTP");
+                            log.error("Fallo al completar la operación FTP");
                         }
                         disconnectFTP(ftp);
                     }
@@ -302,7 +302,9 @@ public class FtpCsvService {
             };
         } catch (IOException e) {
             disconnectFTP(ftp);
-            throw e;
+            String err = "Fallo intentando descargar el fichero: " + fileName;
+            log.error(err);
+            throw new IOException(err);
         }
     }
 
