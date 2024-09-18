@@ -78,6 +78,7 @@ public class FtpCsvService {
             throw new IOException(err);
         }
 
+        log.info(ftp.printWorkingDirectory());
         // 2. Crear path
         String path = crearPath(unidadName, operacionName, fechaInicioFormateada, fechaFinFormateada);
 
@@ -304,7 +305,7 @@ public class FtpCsvService {
 
     private String crearPath(String unidadName, String operacionName, String fechaInicioFormateada,
             String fechaFinFormateada) {
-        return "UNIDADES/" + unidadName + "/INFORMES " + operacionName + "/PERSONALIZADOS/" + operacionName + "("
+d        return "/UNIDADES/" + unidadName + "/INFORMES " + operacionName + "/PERSONALIZADOS/" + operacionName + "("
                 + fechaInicioFormateada + "-" + fechaFinFormateada + ")";
     }
 
