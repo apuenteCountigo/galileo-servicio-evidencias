@@ -353,7 +353,11 @@ public class FtpCsvService {
             String directorio = directorios.get(i);
             TreeNode dirNode = new TreeNode(directorio, basePath + "/" + directorio, new ArrayList<>(),
                     false, false);
+            ftp.changeWorkingDirectory(baseDir);
             ftp.changeWorkingDirectory(basePath + "/" + directorio);
+            log.info("*********************************");
+            log.info(ftp.printWorkingDirectory());
+            log.info("*********************************");
 
             FTPFile[] archivos = ftp.listFiles();
             for (int j = 0; j < archivos.length; j++) {
