@@ -264,9 +264,10 @@ public class FtpCsvService {
 
         // Comprobación de la existencia del fichero
         // fileName = fileName.replace(" ", "%20");
-        fileName = "\"" + fileName + "\"";
-        FTPFile[] files = ftp.listFiles(fileName);
-        if (files.length == 0) {
+        // fileName = "\"" + fileName + "\"";
+        // FTPFile[] files = ftp.listFiles(fileName);
+        String[] fileNames = ftp.listNames(fileName);
+        if (fileNames == null || fileNames.length == 0) {
             String err = "Fallo, el fichero " + fileName + ", no existe en el servidor";
             log.error(err);
             disconnectFTP(ftp);
