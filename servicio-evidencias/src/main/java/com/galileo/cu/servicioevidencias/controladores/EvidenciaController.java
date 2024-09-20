@@ -41,6 +41,7 @@ import com.galileo.cu.commons.models.Conexiones;
 import com.galileo.cu.commons.models.Objetivos;
 import com.galileo.cu.servicioevidencias.clientes.Dataminer;
 import com.galileo.cu.servicioevidencias.dtos.DataminerObjectOutput;
+import com.galileo.cu.servicioevidencias.dtos.PendientesFirma;
 import com.galileo.cu.servicioevidencias.dtos.TreeNode;
 import com.galileo.cu.servicioevidencias.repositorios.EvidenciaRepository;
 import com.galileo.cu.servicioevidencias.repositorios.ProgEvidens;
@@ -107,6 +108,18 @@ public class EvidenciaController {
 
     }
 
+    @GetMapping("/toBuildPackage")
+    public ResponseEntity<String> toBuildPackage(@RequestParam("idAuth") long idAuth) {
+        if (ProgEvidens.progEvi != null
+                && !ProgEvidens.progEvi.isEmpty()
+                && ProgEvidens.progEvi.containsKey(idAuth)) {
+            ProgEvidens.isBuildingPackage.replace(idAuth, true);
+            return ResponseEntity.ok("{\"message\":\"Fue iniciada la construcción del paquete de evidencias\"}");
+        }
+        return ResponseEntity.badRequest()
+                .body("{\"message\":\"Fallo, usted no tiene ningún procesamiento de evidencias pendiente\"}");
+    }
+
     @GetMapping("/progreso")
     public ResponseEntity<String> progreso(
             @RequestParam("idAuth") long idAuth) {
@@ -123,35 +136,50 @@ public class EvidenciaController {
                 v = ProgEvidens.progEvi.get(idAuth);
 
                 // En el 95% se inicia el testeo del parámetro 3001, en espera del ZIP
-                if (v > 94 && v < 100) {
-                    try {
-                        String zip = dataminer.testZip(
-                                Integer.valueOf(ProgEvidens.operacion.get(idAuth).getIdDataminer()),
-                                Integer.valueOf(ProgEvidens.operacion.get(idAuth).getIdElement()));
-                        log.info("-*****Se consultó el parámetro 3001 de la operación: "
-                                + ProgEvidens.operacion.get(idAuth).getDescripcion());
-                        log.info("-*****Valor del parámetro 3001== " + zip);
-
-                        if (!Strings.isNullOrEmpty(zip)) {
-                            log.info("-*****Parámetro 3001 con valores ");
-                            String ls = zip.split("\"Value\":\"")[1].split("\"")[0];
-                            log.info("ls con split=" + ls);
-                            if (!Strings.isNullOrEmpty(ls)) {
-                                log.info("zip Value con valor=" + ls);
-                                ProgEvidens.progEvi.replace(idAuth, 100);
-                                ProgEvidens.zipPendiente.replace(idAuth, ls);
-                                log.info("ProgEvidens.zipPendiente==" + ProgEvidens.zipPendiente.get(idAuth));
-                            } else {
-                                log.info("zip Value sin valor");
-                            }
+                if (v == 95) {
+                    if (ProgEvidens.isBuildingPackage.get(idAuth)) {
+                        PendientesFirma pf = ProgEvidens.pendientesFirma.get(idAuth);
+                        try {
+                            dataminer.enviarNombresCSV(pf.idDMA, pf.idElement, pf.ficheros);
+                            ProgEvidens.progEvi.replace(idAuth, 96);
+                        } catch (Exception e) {
+                            String err = "Fallo, enviando a DMA, nombres de ficheros a firmar";
+                            log.error(err, e);
+                            new RuntimeException(err);
                         }
-                    } catch (Exception e) {
-                        log.error("Fallo consultando en Dataminer el parámetro 3001 de la operación " + e.getMessage());
-                        eviRepo.EliminarProgEvidens(idAuth);
-                        throw new RuntimeException("Fallo consultando en Dataminer el parámetro 3001 de la operación");
                     }
-                }
-                if (v == 100) {
+                } else if (v == 96) {
+                    if (ProgEvidens.isBuildingPackage.get(idAuth)) {
+                        try {
+                            String zip = dataminer.testZip(
+                                    Integer.valueOf(ProgEvidens.operacion.get(idAuth).getIdDataminer()),
+                                    Integer.valueOf(ProgEvidens.operacion.get(idAuth).getIdElement()));
+                            log.info("-*****Se consultó el parámetro 3001 de la operación: "
+                                    + ProgEvidens.operacion.get(idAuth).getDescripcion());
+                            log.info("-*****Valor del parámetro 3001== " + zip);
+
+                            if (!Strings.isNullOrEmpty(zip)) {
+                                log.info("-*****Parámetro 3001 con valores ");
+                                String ls = zip.split("\"Value\":\"")[1].split("\"")[0];
+                                log.info("ls con split=" + ls);
+                                if (!Strings.isNullOrEmpty(ls)) {
+                                    log.info("zip Value con valor=" + ls);
+                                    ProgEvidens.progEvi.replace(idAuth, 100);
+                                    ProgEvidens.zipPendiente.replace(idAuth, ls);
+                                    log.info("ProgEvidens.zipPendiente==" + ProgEvidens.zipPendiente.get(idAuth));
+                                } else {
+                                    log.info("zip Value sin valor");
+                                }
+                            }
+                        } catch (Exception e) {
+                            log.error("Fallo consultando en Dataminer el parámetro 3001 de la operación "
+                                    + e.getMessage());
+                            eviRepo.EliminarProgEvidens(idAuth);
+                            throw new RuntimeException(
+                                    "Fallo consultando en Dataminer el parámetro 3001 de la operación");
+                        }
+                    }
+                } else if (v == 100) {
                     if (!ProgEvidens.advertencias.get(idAuth).isEmpty() && ProgEvidens.advertencias.get(idAuth) != "") {
                         String msg = "Fallo, la evidencia fue completada con errores. Los siguientes objetivos no tienen balizas ni posiciones";
                         msg += ProgEvidens.advertencias.get(idAuth);

@@ -4,7 +4,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.apache.commons.net.ftp.FTP;
@@ -15,8 +17,10 @@ import org.springframework.stereotype.Repository;
 
 import com.galileo.cu.commons.models.Conexiones;
 import com.galileo.cu.commons.models.Objetivos;
+import com.galileo.cu.commons.models.Operaciones;
 import com.galileo.cu.commons.models.Posiciones;
 import com.galileo.cu.commons.models.Progresos;
+import com.galileo.cu.servicioevidencias.dtos.PendientesFirma;
 import com.google.common.base.Strings;
 
 import lombok.extern.slf4j.Slf4j;
@@ -422,6 +426,8 @@ public class EvidenciaRepositoryImpl implements EvidenciaRepository {
         ProgEvidens.ficherosPendientes.remove(idUsu);
         ProgEvidens.advertencias.remove(idUsu);
         ProgEvidens.operacion.remove(idUsu);
+        ProgEvidens.isBuildingPackage.remove(idUsu);
+        ProgEvidens.pendientesFirma.remove(idUsu);
 
         if (keepZipPendiente != null && keepZipPendiente.length > 0 && !keepZipPendiente[0]) {
             log.info("zipPendiente.remove");

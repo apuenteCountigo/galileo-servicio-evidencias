@@ -41,6 +41,7 @@ import com.galileo.cu.commons.models.Progresos;
 import com.galileo.cu.commons.models.Usuarios;
 import com.galileo.cu.commons.models.dto.JwtObjectMap;
 import com.galileo.cu.servicioevidencias.clientes.Dataminer;
+import com.galileo.cu.servicioevidencias.dtos.PendientesFirma;
 import com.galileo.cu.servicioevidencias.repositorios.ActaRepository;
 import com.galileo.cu.servicioevidencias.repositorios.ConexionesRepository;
 import com.galileo.cu.servicioevidencias.repositorios.EvidenciaRepository;
@@ -130,6 +131,8 @@ public class EvidenciaServiceImpl implements EvidenciaService {
         ProgEvidens.advertencias.put(usu.getId(), new String());
         ProgEvidens.operacion.put(usu.getId(), new Operaciones());
         ProgEvidens.zipPendiente.put(usu.getId(), "");
+        ProgEvidens.isBuildingPackage.put(usu.getId(), false);
+        ProgEvidens.pendientesFirma.put(usu.getId(), null);
 
         // Inbuilt format
         // DateTimeFormatter format = DateTimeFormatter.ISO_DATE_TIME;
@@ -228,13 +231,11 @@ public class EvidenciaServiceImpl implements EvidenciaService {
         String pendientesFirma[] = { "" };
 
         totalObj = objs.size();
-        incremento = 90 / (totalObj * 2);
+        incremento = 89 / totalObj;
 
-        log.info("Total Objetivos: " + totalObj);
-        log.info("incremento = 100 / (totalObj + 2): " + incremento);
-
+        porcientoActual = 0;
+        ProgEvidens.progEvi.replace(usu.getId(), porcientoActual);
         objs.forEach((Objetivos obj) -> {
-
             List<Posiciones> pos;
             try {
                 String typePrecision = "GPS";
@@ -258,9 +259,6 @@ public class EvidenciaServiceImpl implements EvidenciaService {
                 throw new RuntimeException("Fallo en la Generación de la Evidencia, Tomando las Posiciones en la BD");
             }
 
-            int por = ProgEvidens.progEvi.get(usu.getId());
-            ProgEvidens.progEvi.replace(usu.getId(), por + incremento);
-
             try {
                 pendientesFirma[0] += eviRepo.BuildFiles(obj, pos, tipoPrecision, fi, ff, pathOperacion,
                         autenticado.getTip(), usu.getId(), incremento);
@@ -271,14 +269,15 @@ public class EvidenciaServiceImpl implements EvidenciaService {
                 throw new RuntimeException("Fallo en la Generación de la Evidencia, " + e.getMessage());
             }
 
-            por = ProgEvidens.progEvi.get(usu.getId());
-            ProgEvidens.progEvi.replace(usu.getId(), por + incremento);
+            porcientoActual = ProgEvidens.progEvi.get(usu.getId());
+            ProgEvidens.progEvi.replace(usu.getId(), porcientoActual + incremento);
         });
+        ProgEvidens.progEvi.replace(usu.getId(), 90);
 
         if (!ProgEvidens.ficherosPendientes.isEmpty() && ProgEvidens.ficherosPendientes.size() > 0
                 && ProgEvidens.ficherosPendientes.containsKey(usu.getId())) {
 
-            int inc = 4 / ProgEvidens.ficherosPendientes.size();
+            int inc = 3 / ProgEvidens.ficherosPendientes.size();
 
             ProgEvidens.ficherosPendientes.get(usu.getId()).forEach((v) -> {
                 log.info(v);
@@ -331,18 +330,22 @@ public class EvidenciaServiceImpl implements EvidenciaService {
         if (pendientesFirma.length > 0 && !pendientesFirma[0].isEmpty() && objs != null && objs.size() > 0) {
             Objetivos obj = objs.get(0);
             try {
-                dataminer.enviarNombresCSV(Integer.valueOf(obj.getOperaciones().getIdDataminer()),
-                        Integer.valueOf(obj.getOperaciones().getIdElement()), pendientesFirma[0]);
-                log.info("Se envio los nombres de fichero a firmar correctamente");
+                PendientesFirma pf = new PendientesFirma();
+                pf.idDMA = Integer.valueOf(obj.getOperaciones().getIdDataminer());
+                pf.idElement = Integer.valueOf(obj.getOperaciones().getIdElement());
+                pf.ficheros = pendientesFirma[0];
+                ProgEvidens.pendientesFirma.replace(usu.getId(), pf);
+                // dataminer.enviarNombresCSV(Integer.valueOf(obj.getOperaciones().getIdDataminer()),
+                // Integer.valueOf(obj.getOperaciones().getIdElement()), pendientesFirma[0]);
+                // log.info("Se envio los nombres de fichero a firmar correctamente");
                 ProgEvidens.operacion.replace(usu.getId(), obj.getOperaciones());
+                ProgEvidens.progEvi.replace(usu.getId(), 95);
             } catch (Exception e) {
                 log.error("Fallo Enviando a Dataminer Nombres de Ficheros a Firmar: ", e.getMessage());
                 log.info("pendientesFirma=" + pendientesFirma[0]);
                 eviRepo.EliminarProgEvidens(usu.getId());
                 throw new RuntimeException("Fallo Enviando a Dataminer Nombres de Ficheros a Firmar");
             }
-
-            ProgEvidens.progEvi.replace(usu.getId(), 95);
         }
     }
 
