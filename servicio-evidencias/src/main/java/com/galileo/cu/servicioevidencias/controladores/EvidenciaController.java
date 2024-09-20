@@ -120,6 +120,21 @@ public class EvidenciaController {
                 .body("{\"message\":\"Fallo, usted no tiene ningún procesamiento de evidencias pendiente\"}");
     }
 
+    @GetMapping("/stopProgress")
+    public ResponseEntity<String> stopProgress(@RequestParam("idAuth") long idAuth) {
+        if (ProgEvidens.progEvi != null
+                && !ProgEvidens.progEvi.isEmpty()
+                && ProgEvidens.progEvi.containsKey(idAuth)
+                && !ProgEvidens.isBuildingPackage.get(idAuth)
+                && ProgEvidens.progEvi.get(idAuth) == 95) {
+            errores.remove(Long.toString(idAuth));
+            eviRepo.EliminarProgEvidens(idAuth);
+            return ResponseEntity.ok("{\"message\":\"Fue detenida la generación de evidencias\"}");
+        }
+        return ResponseEntity.badRequest()
+                .body("{\"message\":\"Fallo, usted no tiene ningún procesamiento de evidencias pendiente\"}");
+    }
+
     @GetMapping("/progreso")
     public ResponseEntity<String> progreso(
             @RequestParam("idAuth") long idAuth) {
