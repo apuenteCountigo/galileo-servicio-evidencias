@@ -195,6 +195,7 @@ public class EvidenciaController {
                         }
                     }
                 } else if (v == 100) {
+                    ProgEvidens.isBuildingPackage.replace(idAuth, false);
                     if (!ProgEvidens.advertencias.get(idAuth).isEmpty() && ProgEvidens.advertencias.get(idAuth) != "") {
                         String msg = "Fallo, la evidencia fue completada con errores. Los siguientes objetivos no tienen balizas ni posiciones";
                         msg += ProgEvidens.advertencias.get(idAuth);
