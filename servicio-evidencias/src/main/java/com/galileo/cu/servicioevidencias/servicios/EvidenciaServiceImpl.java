@@ -83,6 +83,7 @@ public class EvidenciaServiceImpl implements EvidenciaService {
 
         FTPClient ftpClient = null;
         try {
+            log.info("token= " + token);
             // Conectar al FTP
             ftpClient = ConectarFTP(token, true);
 
