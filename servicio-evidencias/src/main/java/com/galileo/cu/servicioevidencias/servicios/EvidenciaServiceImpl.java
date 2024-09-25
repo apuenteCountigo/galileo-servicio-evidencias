@@ -65,7 +65,8 @@ public class EvidenciaServiceImpl implements EvidenciaService {
             // Validar y obtener el usuario basado en el token
             usuario = validarYObtenerUsuario(token);
         } catch (Exception e) {
-            String err = e.getMessage().contains("Fallo") ? e.getMessage() : "Fallo, validando usuario";
+            String err = e != null && e.getMessage() != null && e.getMessage().contains("Fallo") ? e.getMessage()
+                    : "Fallo, validando usuario";
             log.error(err, e);
             throw new RuntimeException(err);
         }
@@ -74,7 +75,7 @@ public class EvidenciaServiceImpl implements EvidenciaService {
             // Inicializar el progreso con el token como identificador único
             inicializarProgreso(token);
         } catch (Exception e) {
-            String err = e.getMessage().contains("Fallo") ? e.getMessage()
+            String err = e != null && e.getMessage() != null && e.getMessage().contains("Fallo") ? e.getMessage()
                     : "Fallo al inicializar el progreso de la evidencia";
             log.error(err, e);
             throw new RuntimeException(err);
