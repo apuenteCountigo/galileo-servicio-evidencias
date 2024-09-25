@@ -60,11 +60,25 @@ public class EvidenciaServiceImpl implements EvidenciaService {
             String token) {
         log.info("Generando KML para objetivos. Fecha Inicio: {} - Fecha Fin: {}", fechaInicio, fechaFin);
 
-        // Validar y obtener el usuario basado en el token
-        Usuarios usuario = validarYObtenerUsuario(token);
+        Usuarios usuario = null;
+        try {
+            // Validar y obtener el usuario basado en el token
+            usuario = validarYObtenerUsuario(token);
+        } catch (Exception e) {
+            String err = e.getMessage().contains("Fallo") ? e.getMessage() : "Fallo, validando usuario";
+            log.error(err, e);
+            throw new RuntimeException(err);
+        }
 
-        // Inicializar el progreso con el token como identificador único
-        inicializarProgreso(token);
+        try {
+            // Inicializar el progreso con el token como identificador único
+            inicializarProgreso(token);
+        } catch (Exception e) {
+            String err = e.getMessage().contains("Fallo") ? e.getMessage()
+                    : "Fallo al inicializar el progreso de la evidencia";
+            log.error(err, e);
+            throw new RuntimeException(err);
+        }
 
         FTPClient ftpClient = null;
         try {
