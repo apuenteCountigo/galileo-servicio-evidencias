@@ -69,7 +69,7 @@ public class EvidenciaServiceImpl implements EvidenciaService {
         FTPClient ftpClient = null;
         try {
             // Conectar al FTP
-            ftpClient = ConectarFTP(usuario.getId(), true);
+            ftpClient = ConectarFTP(token, true);
 
             // Crear estructura de directorios en el FTP
             String pathOperacion = crearEstructuraDirectorio(ftpClient, objetivos, fechaInicio, fechaFin);
@@ -141,7 +141,7 @@ public class EvidenciaServiceImpl implements EvidenciaService {
 
     // Conexión al FTP
     @Override
-    public FTPClient ConectarFTP(long idAuth, Boolean... passiveMode) throws Exception {
+    public FTPClient ConectarFTP(String token, Boolean... passiveMode) throws Exception {
         FTPClient ftpClient = configurarConexionFTP(passiveMode);
         return ftpClient;
     }
