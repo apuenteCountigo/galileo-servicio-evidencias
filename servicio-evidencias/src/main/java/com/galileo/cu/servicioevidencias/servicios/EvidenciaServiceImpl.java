@@ -246,7 +246,7 @@ public class EvidenciaServiceImpl implements EvidenciaService {
         String operacionPath = unidadesDir + carpetaUnidad
                 + "/INFORMES " + carpetaOperacion
                 + "/PERSONALIZADOS/"
-                + carpetaOperacion + "(" + fi.replace("T", " ") + "-" + ff.replace("T", " ") + ")/";
+                + carpetaOperacion + "(" + fi.replace("T", " ") + "-" + ff.replace("T", " ") + ")";
 
         try {
             ftpClient.changeWorkingDirectory(operacionPath);
