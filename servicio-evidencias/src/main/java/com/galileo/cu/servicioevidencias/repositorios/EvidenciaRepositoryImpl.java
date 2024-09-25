@@ -160,11 +160,11 @@ public class EvidenciaRepositoryImpl implements EvidenciaRepository {
                 ProgEvidens.ficherosPendientes.get(token)
                         .add(obj.getBalizas().getClave() + "®" + nombreFichero + "(Vacio).csv");
                 pendientesFirma.append(nombreFichero).append("(Vacio),");
-                return pendientesFirma.toString();
+                return pendientesFirma.toString() == null ? pendientesFirma.toString() : "L163";
             } else if (pos.size() == 0) {
                 String adv = ProgEvidens.advertencias.get(token) + ", " + obj.getDescripcion();
                 ProgEvidens.advertencias.replace(token, adv);
-                return pendientesFirma.toString();
+                return pendientesFirma.toString() == null ? pendientesFirma.toString() : "L167";
             }
         } catch (Exception e) {
             limpiarProgresoPrevio(token);
