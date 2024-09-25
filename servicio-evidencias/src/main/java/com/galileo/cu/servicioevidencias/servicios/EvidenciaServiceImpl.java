@@ -374,16 +374,20 @@ public class EvidenciaServiceImpl implements EvidenciaService {
             try {
                 FilesUpload(ftpClient, fichero, pathOperacion + "/KMLS");
             } catch (Exception e) {
-                log.error("Error subiendo fichero al FTP: {}", e.getMessage());
+                log.error("Fallo subiendo fichero al FTP: {}", e.getMessage());
                 limpiarProgresoPrevio(token);
-                throw new RuntimeException("Error subiendo fichero al FTP", e);
+                throw new RuntimeException("Fallo subiendo fichero al FTP", e);
             }
         }
     }
 
     // Método para subir archivos al FTP
     private void FilesUpload(FTPClient ftpClient, String nombre, String camino) throws IOException {
-        try (FileInputStream fis = new FileInputStream(nombre)) {
+        FileInputStream fis = null;
+        try {
+            log.info("nombre del fichero: " + nombre);
+            log.info("Camino donde se va a subir: " + camino);
+            fis = new FileInputStream(nombre);
             ftpClient.changeWorkingDirectory(camino);
             boolean uploadFile = ftpClient.storeFile(nombre, fis);
             if (!uploadFile) {
