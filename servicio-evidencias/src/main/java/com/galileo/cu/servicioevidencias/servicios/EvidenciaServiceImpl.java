@@ -145,13 +145,19 @@ public class EvidenciaServiceImpl implements EvidenciaService {
 
     // Inicialización del progreso usando el token como clave
     private void inicializarProgreso(String token) {
-        ProgEvidens.progEvi.put(token, 0);
-        ProgEvidens.ficherosPendientes.put(token, new ArrayList<>());
-        ProgEvidens.advertencias.put(token, "");
-        ProgEvidens.operacion.put(token, new Operaciones());
-        ProgEvidens.zipPendiente.put(token, "");
-        ProgEvidens.isBuildingPackage.put(token, false);
-        ProgEvidens.pendientesFirma.put(token, null);
+        try {
+            ProgEvidens.progEvi.put(token, 0);
+            ProgEvidens.ficherosPendientes.put(token, new ArrayList<>());
+            ProgEvidens.advertencias.put(token, "");
+            ProgEvidens.operacion.put(token, new Operaciones());
+            ProgEvidens.zipPendiente.put(token, "");
+            ProgEvidens.isBuildingPackage.put(token, false);
+            ProgEvidens.pendientesFirma.put(token, null);
+        } catch (Exception e) {
+            String err = "Fallo al inicializar el progreso de la evidencia";
+            log.error(err, e);
+            throw new RuntimeException(err + "--" + e.getMessage());
+        }
     }
 
     // Conexión al FTP
