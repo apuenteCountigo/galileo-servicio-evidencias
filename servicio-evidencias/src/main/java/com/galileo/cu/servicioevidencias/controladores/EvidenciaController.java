@@ -80,7 +80,7 @@ public class EvidenciaController {
             eviServ.GenerarKML(objs, tipoPrecision, fechaInicio, fechaFin, token);
         } catch (Exception e) {
             log.error(e.getMessage());
-            errores.put(token, e.getMessage());
+            // errores.put(token, e.getMessage());
             return ResponseEntity.badRequest().body("{\"message\":\"" + e.getMessage() + "\"}");
         }
 
