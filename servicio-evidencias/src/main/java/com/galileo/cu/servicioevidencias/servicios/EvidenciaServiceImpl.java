@@ -175,8 +175,19 @@ public class EvidenciaServiceImpl implements EvidenciaService {
             throw new RuntimeException("No se encontró un servicio FTP disponible");
         }
 
+        String puerto = conexion.getPuerto();
+        if (puerto == null || puerto.isEmpty()) {
+            puerto = "21"; // Puerto FTP por defecto
+        }
+
         FTPClient ftpClient = new FTPClient();
-        ftpClient.connect(conexion.getIpServicio(), Integer.parseInt(conexion.getPuerto()));
+        try {
+            ftpClient.connect(conexion.getIpServicio(), Integer.parseInt(conexion.getPuerto()));
+        } catch (Exception e) {
+            String err = "Fallo, intentando conectar con el servidor FTP.";
+            log.error(err, e.getMessage());
+            throw new RuntimeException(err);
+        }
 
         if (!FTPReply.isPositiveCompletion(ftpClient.getReplyCode())) {
             ftpClient.disconnect();
