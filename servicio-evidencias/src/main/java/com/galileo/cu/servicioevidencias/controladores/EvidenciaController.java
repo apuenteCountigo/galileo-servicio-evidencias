@@ -1,8 +1,6 @@
 package com.galileo.cu.servicioevidencias.controladores;
 
 import java.io.BufferedInputStream;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -15,52 +13,37 @@ import java.util.List;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
-import org.apache.commons.net.ftp.FTPFile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.galileo.cu.commons.models.Conexiones;
-import com.galileo.cu.commons.models.Objetivos;
-import com.galileo.cu.servicioevidencias.clientes.Dataminer;
-import com.galileo.cu.servicioevidencias.dtos.DataminerObjectOutput;
-import com.galileo.cu.servicioevidencias.dtos.PendientesFirma;
-import com.galileo.cu.servicioevidencias.dtos.TreeNode;
-import com.galileo.cu.servicioevidencias.repositorios.EvidenciaRepository;
-import com.galileo.cu.servicioevidencias.repositorios.ProgEvidens;
-import com.galileo.cu.servicioevidencias.repositorios.UsuariosRepository;
-import com.galileo.cu.servicioevidencias.servicios.EvidenciaService;
-import com.galileo.cu.servicioevidencias.servicios.FtpCsvService;
-import com.google.common.base.Strings;
-import com.google.common.util.concurrent.ExecutionError;
-
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.galileo.cu.commons.models.Objetivos;
+import com.galileo.cu.servicioevidencias.clientes.Dataminer;
+import com.galileo.cu.servicioevidencias.dtos.PendientesFirma;
+import com.galileo.cu.servicioevidencias.dtos.TreeNode;
+import com.galileo.cu.servicioevidencias.repositorios.EvidenciaRepository;
+import com.galileo.cu.servicioevidencias.repositorios.UsuariosRepository;
+import com.galileo.cu.servicioevidencias.servicios.EvidenciaService;
+import com.galileo.cu.servicioevidencias.servicios.FtpCsvService;
+import com.galileo.cu.servicioevidencias.repositorios.ProgEvidens;
+import com.google.common.base.Strings;
+import com.google.common.util.concurrent.ExecutionError;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
 public class EvidenciaController {
+
     @Autowired
     EvidenciaService eviServ;
 
@@ -79,9 +62,7 @@ public class EvidenciaController {
     @Autowired
     FtpCsvService ftpCsv;
 
-    Dictionary errores = new Hashtable();
-
-    DataminerObjectOutput dataMinerObj;
+    Dictionary<String, String> errores = new Hashtable<>();
 
     @PostMapping("/generarKMLS")
     public ResponseEntity<String> generarKMLS(
@@ -89,8 +70,7 @@ public class EvidenciaController {
             @RequestParam("tipoPrecision") String tipoPrecision,
             @RequestHeader("Authorization") String token,
             @RequestParam("fechaInicio") String fechaInicio,
-            @RequestParam("fechaFin") String fechaFin,
-            @RequestParam("idAuth") long idAuth) {
+            @RequestParam("fechaFin") String fechaFin) {
 
         log.info("Fecha Inicio 1-generarKMLS:: " + fechaInicio);
         log.info("Fecha Fin 1-generarKMLS:: " + fechaFin);
@@ -100,20 +80,20 @@ public class EvidenciaController {
             eviServ.GenerarKML(objs, tipoPrecision, fechaInicio, fechaFin, token);
         } catch (Exception e) {
             log.error(e.getMessage());
-            errores.put(Long.toString(idAuth), e.getMessage());
+            errores.put(token, e.getMessage());
             return ResponseEntity.badRequest().body("{\"message\":\"" + e.getMessage() + "\"}");
         }
 
         return ResponseEntity.ok().body("{\"message\":\"Completado\"}");
-
     }
 
     @GetMapping("/toBuildPackage")
-    public ResponseEntity<String> toBuildPackage(@RequestParam("idAuth") long idAuth) {
+    public ResponseEntity<String> toBuildPackage(@RequestHeader("Authorization") String token) {
+        token = token.replace("Bearer ", "");
         if (ProgEvidens.progEvi != null
                 && !ProgEvidens.progEvi.isEmpty()
-                && ProgEvidens.progEvi.containsKey(idAuth)) {
-            ProgEvidens.isBuildingPackage.replace(idAuth, true);
+                && ProgEvidens.progEvi.containsKey(token)) {
+            ProgEvidens.isBuildingPackage.replace(token, true);
             return ResponseEntity.ok("{\"message\":\"Fue iniciada la construcción del paquete de evidencias\"}");
         }
         return ResponseEntity.badRequest()
@@ -121,14 +101,15 @@ public class EvidenciaController {
     }
 
     @GetMapping("/stopProgress")
-    public ResponseEntity<String> stopProgress(@RequestParam("idAuth") long idAuth) {
+    public ResponseEntity<String> stopProgress(@RequestHeader("Authorization") String token) {
+        token = token.replace("Bearer ", "");
         if (ProgEvidens.progEvi != null
                 && !ProgEvidens.progEvi.isEmpty()
-                && ProgEvidens.progEvi.containsKey(idAuth)
-                && !ProgEvidens.isBuildingPackage.get(idAuth)
-                && ProgEvidens.progEvi.get(idAuth) == 95) {
-            errores.remove(Long.toString(idAuth));
-            eviRepo.EliminarProgEvidens(idAuth);
+                && ProgEvidens.progEvi.containsKey(token)
+                && !ProgEvidens.isBuildingPackage.get(token)
+                && ProgEvidens.progEvi.get(token) == 95) {
+            errores.remove(token);
+            eviRepo.EliminarProgEvidens(token);
             return ResponseEntity.ok("{\"message\":\"Fue detenida la generación de evidencias\"}");
         }
         return ResponseEntity.badRequest()
@@ -136,41 +117,41 @@ public class EvidenciaController {
     }
 
     @GetMapping("/progreso")
-    public ResponseEntity<String> progreso(
-            @RequestParam("idAuth") long idAuth) {
-        if (!errores.isEmpty() && errores.get(Long.toString(idAuth)) != null) {
-            String msg = errores.get(Long.toString(idAuth)).toString();
-            errores.remove(Long.toString(idAuth));
-            eviRepo.EliminarProgEvidens(idAuth);
+    public ResponseEntity<String> progreso(@RequestHeader("Authorization") String token) {
+        token = token.replace("Bearer ", "");
+        if (!errores.isEmpty() && errores.get(token) != null) {
+            String msg = errores.get(token);
+            errores.remove(token);
+            eviRepo.EliminarProgEvidens(token);
             return ResponseEntity.badRequest().body("{\"message\":\"" + msg + "\"}");
         }
         try {
             int v = 0;
             if (ProgEvidens.progEvi != null && !ProgEvidens.progEvi.isEmpty()
-                    && ProgEvidens.progEvi.containsKey(idAuth)) {
-                v = ProgEvidens.progEvi.get(idAuth);
+                    && ProgEvidens.progEvi.containsKey(token)) {
+                v = ProgEvidens.progEvi.get(token);
 
                 // En el 95% se inicia el testeo del parámetro 3001, en espera del ZIP
                 if (v == 95) {
-                    if (ProgEvidens.isBuildingPackage.get(idAuth)) {
-                        PendientesFirma pf = ProgEvidens.pendientesFirma.get(idAuth);
+                    if (ProgEvidens.isBuildingPackage.get(token)) {
+                        PendientesFirma pf = ProgEvidens.pendientesFirma.get(token);
                         try {
-                            dataminer.enviarNombresCSV(pf.idDMA, pf.idElement, pf.ficheros);
-                            ProgEvidens.progEvi.replace(idAuth, 96);
+                            dataminer.enviarNombresCSV(pf.getIdDMA(), pf.getIdElement(), pf.getFicheros());
+                            ProgEvidens.progEvi.replace(token, 96);
                         } catch (Exception e) {
                             String err = "Fallo, enviando a DMA, nombres de ficheros a firmar";
                             log.error(err, e);
-                            new RuntimeException(err);
+                            throw new RuntimeException(err);
                         }
                     }
                 } else if (v == 96) {
-                    if (ProgEvidens.isBuildingPackage.get(idAuth)) {
+                    if (ProgEvidens.isBuildingPackage.get(token)) {
                         try {
                             String zip = dataminer.testZip(
-                                    Integer.valueOf(ProgEvidens.operacion.get(idAuth).getIdDataminer()),
-                                    Integer.valueOf(ProgEvidens.operacion.get(idAuth).getIdElement()));
+                                    Integer.valueOf(ProgEvidens.operacion.get(token).getIdDataminer()),
+                                    Integer.valueOf(ProgEvidens.operacion.get(token).getIdElement()));
                             log.info("-*****Se consultó el parámetro 3001 de la operación: "
-                                    + ProgEvidens.operacion.get(idAuth).getDescripcion());
+                                    + ProgEvidens.operacion.get(token).getDescripcion());
                             log.info("-*****Valor del parámetro 3001== " + zip);
 
                             if (!Strings.isNullOrEmpty(zip)) {
@@ -179,9 +160,9 @@ public class EvidenciaController {
                                 log.info("ls con split=" + ls);
                                 if (!Strings.isNullOrEmpty(ls)) {
                                     log.info("zip Value con valor=" + ls);
-                                    ProgEvidens.progEvi.replace(idAuth, 100);
-                                    ProgEvidens.zipPendiente.replace(idAuth, ls);
-                                    log.info("ProgEvidens.zipPendiente==" + ProgEvidens.zipPendiente.get(idAuth));
+                                    ProgEvidens.progEvi.replace(token, 100);
+                                    ProgEvidens.zipPendiente.replace(token, ls);
+                                    log.info("ProgEvidens.zipPendiente==" + ProgEvidens.zipPendiente.get(token));
                                 } else {
                                     log.info("zip Value sin valor");
                                 }
@@ -189,37 +170,37 @@ public class EvidenciaController {
                         } catch (Exception e) {
                             log.error("Fallo consultando en Dataminer el parámetro 3001 de la operación "
                                     + e.getMessage());
-                            eviRepo.EliminarProgEvidens(idAuth);
+                            eviRepo.EliminarProgEvidens(token);
                             throw new RuntimeException(
                                     "Fallo consultando en Dataminer el parámetro 3001 de la operación");
                         }
                     }
                 } else if (v == 100) {
-                    ProgEvidens.isBuildingPackage.replace(idAuth, false);
-                    if (!ProgEvidens.advertencias.get(idAuth).isEmpty() && ProgEvidens.advertencias.get(idAuth) != "") {
+                    ProgEvidens.isBuildingPackage.replace(token, false);
+                    if (!ProgEvidens.advertencias.get(token).isEmpty()) {
                         String msg = "Fallo, la evidencia fue completada con errores. Los siguientes objetivos no tienen balizas ni posiciones";
-                        msg += ProgEvidens.advertencias.get(idAuth);
+                        msg += ProgEvidens.advertencias.get(token);
 
-                        if (!Strings.isNullOrEmpty(ProgEvidens.zipPendiente.get(idAuth)))
-                            eviRepo.EliminarProgEvidens(idAuth, true);
+                        if (!Strings.isNullOrEmpty(ProgEvidens.zipPendiente.get(token)))
+                            eviRepo.EliminarProgEvidens(token, true);
                         else
-                            eviRepo.EliminarProgEvidens(idAuth);
+                            eviRepo.EliminarProgEvidens(token);
 
                         return ResponseEntity.badRequest().body("{\"message\":\"" + msg + "\"}");
                     }
 
-                    log.info("100%% ProgEvidens.zipPendiente==" + ProgEvidens.zipPendiente.get(idAuth));
+                    log.info("100% ProgEvidens.zipPendiente==" + ProgEvidens.zipPendiente.get(token));
 
-                    if (!Strings.isNullOrEmpty(ProgEvidens.zipPendiente.get(idAuth)))
-                        eviRepo.EliminarProgEvidens(idAuth, true);
+                    if (!Strings.isNullOrEmpty(ProgEvidens.zipPendiente.get(token)))
+                        eviRepo.EliminarProgEvidens(token, true);
                     else
-                        eviRepo.EliminarProgEvidens(idAuth);
+                        eviRepo.EliminarProgEvidens(token);
                 }
                 return ResponseEntity.ok("{\"valor\":\"" + v + "\"}");
             }
         } catch (Exception e) {
             log.error("ERROR, Consultando el Progreso: " + e.getMessage());
-            eviRepo.EliminarProgEvidens(idAuth);
+            eviRepo.EliminarProgEvidens(token);
             return ResponseEntity.badRequest().body("{\"message\":\"Fallo Consultando el Progreso de la Evidencia\"}");
         }
         return ResponseEntity.badRequest()
@@ -246,9 +227,7 @@ public class EvidenciaController {
         }
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
-        // ftpCsv.listCsvFiles(pageable);
         return ftpCsv.listCsvFiles(pageable, unidadName, operacionName, fechaInicio, fechaFin);
-        // return ResponseEntity.ok("downloadCSV");
     }
 
     @GetMapping("/downloadCSV/{fileName}")
@@ -276,22 +255,23 @@ public class EvidenciaController {
     }
 
     @GetMapping("/pathZip")
-    public ResponseEntity<String> pathZip(
-            @RequestParam("idAuth") long idAuth) {
-        return ResponseEntity.ok("{\"path\":\"" + ProgEvidens.zipPendiente.get(idAuth) + "\"}");
+    public ResponseEntity<String> pathZip(@RequestHeader("Authorization") String token) {
+        token = token.replace("Bearer ", "");
+        return ResponseEntity.ok("{\"path\":\"" + ProgEvidens.zipPendiente.get(token) + "\"}");
     }
 
     @RequestMapping(value = "/zip", method = RequestMethod.GET, produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
-    public void downloadFile(@RequestParam("idAuth") long idAuth, @RequestParam("zipPath") String zipPath,
+    public void downloadFile(@RequestHeader("Authorization") String token, @RequestParam("zipPath") String zipPath,
             HttpServletResponse response) throws IOException {
+        token = token.replace("Bearer ", "");
         FTPClient ftp = new FTPClient();
         try {
             if (!ftp.isConnected()) {
-                ftp = eviServ.ConectarFTP(idAuth, true);
+                ftp = eviServ.ConectarFTP(token, true);
             }
 
             if (ftp.isConnected())
-                log.info("EvidenciaController FTP ZIP Conectado con exito");
+                log.info("EvidenciaController FTP ZIP Conectado con éxito");
 
         } catch (Exception e) {
             String msg = e.getMessage();
@@ -300,12 +280,10 @@ public class EvidenciaController {
 
             log.info("@@@@ EvidenciaController /zip " + msg);
             response.sendError(500, "{\"message\":\"" + msg + "\"}");
+            return;
         }
 
-        // create object of Path
         Path path = Paths.get(zipPath);
-
-        // call getFileName() and get FileName path object
         Path fileName = path.getFileName();
 
         log.info("EvidenciaController downloadFile Path=" + path + " filename=" + fileName);
@@ -320,37 +298,37 @@ public class EvidenciaController {
         try {
             downloadStream = response.getOutputStream();
         } catch (IOException e) {
-            log.info("@@@@ EvidenciaController /zip Error downloadStream = response.getOutputStream() "
-                    + e.getMessage());
+            log.info("@@@@ EvidenciaController /zip Error al obtener OutputStream: " + e.getMessage());
             response.sendError(500, "{\"message\":\"Fallo al intentar descargar el zip\"}");
+            return;
         }
 
         ftp.setFileType(FTPClient.BINARY_FILE_TYPE);
 
-        // Lee el fichero en el FTP como Stream
         InputStream ftpReader = null;
 
         try {
             ftpReader = ftp.retrieveFileStream(zipPath);
         } catch (IOException e) {
-            log.info("@@@@ EvidenciaController /zip Error línea 276 Leyendo el fichero en ftp " + e.getMessage());
+            log.info("@@@@ EvidenciaController /zip Error al leer el fichero en ftp: " + e.getMessage());
             if (e.getMessage().contains("FTP response 421 received")) {
-                log.info("El FTP dio Error 421 Intentaremos reconectar");
+                log.info("El FTP dio Error 421. Intentando reconectar...");
                 if (ftp != null && ftp.isConnected()) {
-                    log.info("Se Procede a Desloguear y desconectar el FTP");
+                    log.info("Procediendo a desconectar el FTP");
                     ftp.logout();
                     ftp.disconnect();
                 }
                 if (ftp == null || !ftp.isConnected()) {
                     log.info("Intentando reconectar FTP ZIP");
                     try {
-                        ftp = eviServ.ConectarFTP(idAuth);
+                        ftp = eviServ.ConectarFTP(token);
                         ftpReader = ftp.retrieveFileStream(zipPath);
                     } catch (Exception e1) {
                         if (downloadStream != null)
                             downloadStream.close();
                         log.info("Fallo intentando reconexión al FTP ZIP " + e1.getMessage());
                         response.sendError(500, "{\"message\":\"Fallo intentando reconexión al FTP\"}");
+                        return;
                     }
                 }
             } else {
@@ -358,19 +336,19 @@ public class EvidenciaController {
                     downloadStream.close();
                 log.error("Fallo leyendo el fichero en el FTP " + e.getMessage());
                 response.sendError(500, "{\"message\":\"Fallo leyendo el fichero en el FTP\"}");
+                return;
             }
         }
 
         if (ftpReader == null) {
             if (downloadStream != null)
                 downloadStream.close();
-            log.error("@@@@ EvidenciaController ftpReader == null /zip Error Leyendo el fichero en ftp");
+            log.error("@@@@ EvidenciaController ftpReader == null /zip Error leyendo el fichero en ftp");
             response.sendError(500, "{\"message\":\"Fallo leyendo el fichero en el FTP\"}");
+            return;
         }
 
-        BufferedInputStream downloadFileIn = new BufferedInputStream(ftpReader, 100);
-
-        try {
+        try (BufferedInputStream downloadFileIn = new BufferedInputStream(ftpReader, 100)) {
             while ((readBytes = downloadFileIn.read(toDownload, 0, 100)) != -1) {
                 downloadStream.write(toDownload, 0, readBytes);
                 downloadStream.flush();
@@ -378,25 +356,21 @@ public class EvidenciaController {
         } catch (Exception e) {
             if (downloadStream != null)
                 downloadStream.close();
-            if (downloadFileIn != null)
-                downloadFileIn.close();
             if (ftpReader != null)
                 ftpReader.close();
-            log.info("@@@@ EvidenciaController while /zip Error Descargando el fichero " + e.getMessage());
+            log.info("@@@@ EvidenciaController /zip Error descargando el fichero " + e.getMessage());
             response.sendError(500, "{\"message\":\"Fallo descargando el fichero desde el FTP\"}");
+            return;
+        } finally {
+            if (downloadStream != null)
+                downloadStream.close();
+            if (ftpReader != null)
+                ftpReader.close();
+            if (ftp != null && ftp.isConnected()) {
+                ftp.logout();
+                ftp.disconnect();
+            }
+            eviRepo.EliminarProgEvidens(token);
         }
-        if (downloadStream != null)
-            downloadStream.close();
-        if (downloadFileIn != null)
-            downloadFileIn.close();
-        if (ftpReader != null)
-            ftpReader.close();
-
-        if (ftp != null && ftp.isConnected()) {
-            ftp.logout();
-            ftp.disconnect();
-        }
-
-        eviRepo.EliminarProgEvidens(idAuth);
     }
 }

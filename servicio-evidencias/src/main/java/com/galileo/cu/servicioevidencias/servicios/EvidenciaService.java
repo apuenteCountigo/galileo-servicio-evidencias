@@ -19,7 +19,7 @@ public interface EvidenciaService {
 			String fechaFin,
 			String token);
 
-	FTPClient ConectarFTP(long idAuth, Boolean... passiveMode) throws Exception;
+	FTPClient ConectarFTP(String token, Boolean... passiveMode) throws Exception;
 
 	void Desconectar(FTPClient ftp);
 }

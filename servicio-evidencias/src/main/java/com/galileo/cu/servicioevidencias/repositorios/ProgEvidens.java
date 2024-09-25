@@ -1,24 +1,20 @@
 package com.galileo.cu.servicioevidencias.repositorios;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.apache.commons.net.ftp.FTPClient;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.galileo.cu.commons.models.Operaciones;
 import com.galileo.cu.servicioevidencias.dtos.PendientesFirma;
 
-//Clase con métodos static, para usarlos como variables globales
 public class ProgEvidens {
-    public static Map<Long, Integer> progEvi = new HashMap<Long, Integer>();
-    public static Map<Long, List<String>> ficherosPendientes = new HashMap<Long, List<String>>();
-    public static Map<Long, String> advertencias = new HashMap<Long, String>();
-    public static Map<Long, Operaciones> operacion = new HashMap<Long, Operaciones>();
-    public static Map<Long, String> zipPendiente = new HashMap<Long, String>();
-    public static Map<Long, Boolean> isBuildingPackage = new HashMap<Long, Boolean>();
-    public static Map<Long, PendientesFirma> pendientesFirma = new HashMap<Long, PendientesFirma>();
-    public static FTPClient ftp = null;
-    public static FTPClient ftpZip = null;
-    public static FTPClient ftpCSV = null;
+    // Mapas para gestionar el progreso de forma concurrente, identificados por el
+    // token
+    public static final Map<String, Integer> progEvi = new ConcurrentHashMap<>();
+    public static final Map<String, List<String>> ficherosPendientes = new ConcurrentHashMap<>();
+    public static final Map<String, String> advertencias = new ConcurrentHashMap<>();
+    public static final Map<String, Operaciones> operacion = new ConcurrentHashMap<>();
+    public static final Map<String, String> zipPendiente = new ConcurrentHashMap<>();
+    public static final Map<String, Boolean> isBuildingPackage = new ConcurrentHashMap<>();
+    public static final Map<String, PendientesFirma> pendientesFirma = new ConcurrentHashMap<>();
 }
