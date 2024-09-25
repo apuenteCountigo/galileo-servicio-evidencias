@@ -79,7 +79,7 @@ public class EvidenciaController {
             token = token.replace("Bearer ", "");
             eviServ.GenerarKML(objs, tipoPrecision, fechaInicio, fechaFin, token);
         } catch (Exception e) {
-            log.error(e.getMessage());
+            log.error("Fallo al generar KML L82", e);
             // errores.put(token, e.getMessage());
             return ResponseEntity.badRequest().body("{\"message\":\"" + e.getMessage() + "\"}");
         }

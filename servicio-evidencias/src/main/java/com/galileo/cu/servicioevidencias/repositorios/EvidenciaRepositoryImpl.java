@@ -150,8 +150,12 @@ public class EvidenciaRepositoryImpl implements EvidenciaRepository {
         try {
             if (pos.size() == 0 && obj.getBalizas() != null) {
                 nombreFichero = obj.getBalizas().getClave() + "(" + fi + "-" + ff + ")";
-                try (FileWriter csv = new FileWriter(nombreFichero + "(Vacio)" + ".csv")) {
-                    // Archivo CSV vacío creado
+                try {
+                    FileWriter csv = new FileWriter(nombreFichero + "(Vacio)" + ".csv");
+                } catch (Exception e) {
+                    String err = "Fallo, intentando escribir el fichero " + nombreFichero + ".csv";
+                    log.error(err, e);
+                    throw new RuntimeException(err);
                 }
                 ProgEvidens.ficherosPendientes.get(token)
                         .add(obj.getBalizas().getClave() + "®" + nombreFichero + "(Vacio).csv");
