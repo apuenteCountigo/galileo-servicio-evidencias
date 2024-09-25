@@ -152,7 +152,7 @@ public class EvidenciaServiceImpl implements EvidenciaService {
             ProgEvidens.operacion.put(token, new Operaciones());
             ProgEvidens.zipPendiente.put(token, "");
             ProgEvidens.isBuildingPackage.put(token, false);
-            ProgEvidens.pendientesFirma.put(token, null);
+            ProgEvidens.pendientesFirma.put(token, new PendientesFirma());
         } catch (Exception e) {
             String err = "Fallo al inicializar el progreso de la evidencia";
             log.error(err, e);
