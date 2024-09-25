@@ -2,14 +2,24 @@ package com.galileo.cu.servicioevidencias.servicios;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.sql.Array;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import javax.persistence.EntityManager;
 
@@ -17,445 +27,507 @@ import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPReply;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.galileo.cu.commons.models.Balizas;
 import com.galileo.cu.commons.models.Conexiones;
+import com.galileo.cu.commons.models.HistoricoObjetivosBalizas;
 import com.galileo.cu.commons.models.Objetivos;
 import com.galileo.cu.commons.models.Operaciones;
 import com.galileo.cu.commons.models.Posiciones;
+import com.galileo.cu.commons.models.Progresos;
 import com.galileo.cu.commons.models.Usuarios;
 import com.galileo.cu.commons.models.dto.JwtObjectMap;
+import com.galileo.cu.servicioevidencias.clientes.Dataminer;
 import com.galileo.cu.servicioevidencias.dtos.PendientesFirma;
-import com.galileo.cu.servicioevidencias.repositorios.*;
+import com.galileo.cu.servicioevidencias.repositorios.ActaRepository;
+import com.galileo.cu.servicioevidencias.repositorios.ConexionesRepository;
+import com.galileo.cu.servicioevidencias.repositorios.EvidenciaRepository;
+import com.galileo.cu.servicioevidencias.repositorios.HistoricoObjetivosBalizasRepository;
+import com.galileo.cu.servicioevidencias.repositorios.PosicionesRepository;
+import com.galileo.cu.servicioevidencias.repositorios.ProgEvidens;
+import com.galileo.cu.servicioevidencias.repositorios.ProgresosRepository;
+import com.galileo.cu.servicioevidencias.repositorios.UsuariosRepository;
+import com.google.common.base.Strings;
 
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
 public class EvidenciaServiceImpl implements EvidenciaService {
+    @Autowired
+    EntityManager em;
 
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    private String baseDir = "/";
+    @Autowired
+    PosicionesRepository posRepo;
 
     @Autowired
-    private EntityManager entityManager;
+    ConexionesRepository conRepo;
+
     @Autowired
-    private PosicionesRepository posicionesRepository;
+    EvidenciaRepository eviRepo;
+
     @Autowired
-    private ConexionesRepository conexionesRepository;
+    ActaRepository actaRepo;
+
     @Autowired
-    private EvidenciaRepository evidenciaRepository;
+    Dataminer dataminer;
+
     @Autowired
-    private ActaRepository actaRepository;
+    ObjectMapper objMap;
+
     @Autowired
-    private ProgresosRepository progresosRepository;
+    ProgresosRepository proRep;
+
     @Autowired
-    private UsuariosRepository usuariosRepository;
+    UsuariosRepository usuRepo;
+
     @Autowired
-    private ObjectMapper objectMapper;
+    HistoricoObjetivosBalizasRepository hobjbalRepo;
+
+    String BaseDir = "/";
+
+    public String body = "";
+    public String csvContent = "";
+    public FTPClient ftp;
+
+    int totalObj = 0;
+    int porcientoActual = 0;
+    int incremento = 0;
 
     @Override
-    public void GenerarKML(List<Objetivos> objetivos, String tipoPrecision, String fechaInicio, String fechaFin,
+    public void GenerarKML(List<Objetivos> objs,
+            String tipoPrecision,
+            String fechaInicio,
+            String fechaFin,
             String token) {
-        log.info("Generando KML para objetivos. Fecha Inicio: {} - Fecha Fin: {}", fechaInicio, fechaFin);
 
-        Usuarios usuario = null;
+        log.info("Fecha Inicio 2-GenerarKML:: " + fechaInicio);
+        log.info("Fecha Fin 2-GenerarKML:: " + fechaFin);
+
+        JwtObjectMap autenticado;
+        Usuarios usu;
+        String pathOperacion;
+
         try {
-            // Validar y obtener el usuario basado en el token
-            usuario = validarYObtenerUsuario(token);
+            autenticado = TomarAutenticado(token);
+            usu = usuRepo.findById(Long.valueOf(autenticado.getId())).get();
         } catch (Exception e) {
-            String err = e != null && e.getMessage() != null && e.getMessage().contains("Fallo") ? e.getMessage()
-                    : "Fallo, validando usuario";
-            log.error(err, e);
-            throw new RuntimeException(err);
+            log.error("Fallo Descomponiendo el Token, es Inválido: " + e.getMessage());
+            throw new RuntimeException("Fallo Descomponiendo el Token, es Inválido");
+        }
+
+        // Iniciando Progreso de evidencias
+        if (!ProgEvidens.progEvi.isEmpty() && ProgEvidens.progEvi.containsKey(usu.getId())) {
+            eviRepo.EliminarProgEvidens(usu.getId());
+            // ProgEvidens.progEvi.remove(usu.getId());
+        }
+
+        // Inicializando Progreso
+        ProgEvidens.progEvi.put(usu.getId(), 0);
+        ProgEvidens.ficherosPendientes.put(usu.getId(), new ArrayList<String>());
+        ProgEvidens.advertencias.put(usu.getId(), new String());
+        ProgEvidens.operacion.put(usu.getId(), new Operaciones());
+        ProgEvidens.zipPendiente.put(usu.getId(), "");
+        ProgEvidens.isBuildingPackage.put(usu.getId(), false);
+        ProgEvidens.pendientesFirma.put(usu.getId(), null);
+
+        // Inbuilt format
+        // DateTimeFormatter format = DateTimeFormatter.ISO_DATE_TIME;
+        // Custom format if needed
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        /*
+         * String fi = fechaInicio.format(formatter).replace(":", "_");
+         * String ff = fechaFin.format(formatter).replace(":", "_");
+         */
+        String fi = fechaInicio.replace(":", "_");
+        String ff = fechaFin.replace(":", "_");
+        String fechaI = new SimpleDateFormat("yyyy-MM-dd").format(objs.get(0).getOperaciones().getFechaInicio());
+        String fechaF = new SimpleDateFormat("yyyy-MM-dd").format(objs.get(0).getOperaciones().getFechaFin());
+
+        try {
+            if (ProgEvidens.ftp == null || !ProgEvidens.ftp.isConnected())
+                ProgEvidens.ftp = ConectarFTP(usu.getId());
+        } catch (Exception e) {
+            if (e.getMessage().contains("Fallo")) {
+                throw new RuntimeException(e.getMessage());
+            } else {
+                throw new RuntimeException("Fallo Conectando al FTP");
+            }
         }
 
         try {
-            // Inicializar el progreso con el token como identificador único
-            inicializarProgreso(token);
+            String unidadesDir = BaseDir + "/UNIDADES/";
+            unidadesDir = unidadesDir.replace("//", "/");
+
+            String carpetaUnidad = objs.get(0).getOperaciones().getUnidades().getDenominacion();
+            String carpetaOperacion = objs.get(0).getOperaciones().getDescripcion();
+
+            boolean dirExists = ProgEvidens.ftp.changeWorkingDirectory(unidadesDir);
+            if (!dirExists) {
+                log.error("Fallo, no existe la estructura de directorios, se procede a su creación");
+                ProgEvidens.ftp.changeWorkingDirectory(BaseDir);
+            }
+
+            try {
+                ProgEvidens.ftp.mkd(unidadesDir);
+                ProgEvidens.ftp.mkd(unidadesDir + carpetaUnidad);
+                ProgEvidens.ftp.mkd(unidadesDir + carpetaUnidad + "/INFORMES "
+                        + carpetaOperacion);
+                ProgEvidens.ftp.mkd(unidadesDir + carpetaUnidad + "/INFORMES "
+                        + carpetaOperacion + "/PERSONALIZADOS");
+                ProgEvidens.ftp.mkd(unidadesDir + carpetaUnidad + "/INFORMES "
+                        + carpetaOperacion + "/ORIGINALES");
+                ProgEvidens.ftp.mkd(unidadesDir + carpetaUnidad + "/INFORMES "
+                        + carpetaOperacion + "/PENDIENTES DE FIRMA");
+                ProgEvidens.ftp.mkd(unidadesDir + carpetaUnidad + "/INFORMES "
+                        + carpetaOperacion + "/FIRMADOS");
+                log.info(unidadesDir + carpetaUnidad + "/INFORMES "
+                        + carpetaOperacion + "/PERSONALIZADOS");
+            } catch (Exception e) {
+                Desconectar(ProgEvidens.ftp);
+                log.error("Fallo creando estructura de Directorios " + e.getMessage());
+                throw new Exception("Fallo Creando Estructura de Directorios para la Operación");
+            }
+
+            ProgEvidens.ftp.changeWorkingDirectory(unidadesDir
+                    + carpetaUnidad
+                    + "/INFORMES " + carpetaOperacion
+                    + "/PERSONALIZADOS/");
+
+            ProgEvidens.ftp
+                    .mkd(carpetaOperacion
+                            + "(" + fi.replace("T", " ") + "-"
+                            + ff.replace("T", " ") + ")");
+
+            pathOperacion = unidadesDir + carpetaUnidad
+                    + "/INFORMES "
+                    + carpetaOperacion + "/PERSONALIZADOS/"
+                    + carpetaOperacion + "(" + fi.replace("T", " ") + "-"
+                    + ff.replace("T", " ") + ")/";
+
+            ProgEvidens.ftp.changeWorkingDirectory(pathOperacion);
+            ProgEvidens.ftp.mkd("KMLS");
+
+            if (ProgEvidens.ftp.isConnected()) {
+                try {
+                    ProgEvidens.ftp.disconnect();
+                } catch (IOException er) {
+                    log.error("Error desconectando ftp");
+                }
+            }
         } catch (Exception e) {
-            String err = e != null && e.getMessage() != null && e.getMessage().contains("Fallo") ? e.getMessage()
-                    : "Fallo al inicializar el progreso de la evidencia";
-            log.error(err, e);
-            throw new RuntimeException(err);
+            eviRepo.EliminarProgEvidens(usu.getId());
+            if (e.getMessage().contains("Fallo")) {
+                throw new RuntimeException(e.getMessage());
+            } else {
+                log.error("Fallo creando carpetas en FTP " + e.getMessage());
+                throw new RuntimeException("Fallo creando carpetas en FTP");
+            }
         }
 
-        FTPClient ftpClient = null;
-        try {
-            // Conectar al FTP
-            ftpClient = ConectarFTP(token, true);
+        String pendientesFirma[] = { "" };
 
-            // Crear estructura de directorios en el FTP
-            String pathOperacion = crearEstructuraDirectorio(ftpClient, objetivos, fechaInicio, fechaFin);
+        totalObj = objs.size();
+        incremento = 89 / totalObj;
 
-            // Procesar los objetivos y generar los archivos
-            procesarObjetivos(ftpClient, token, usuario, objetivos, tipoPrecision, fechaInicio, fechaFin,
-                    pathOperacion);
+        porcientoActual = 0;
+        ProgEvidens.progEvi.replace(usu.getId(), porcientoActual);
+        objs.forEach((Objetivos obj) -> {
+            List<Posiciones> pos;
+            try {
+                String typePrecision = "GPS";
+                String signo = "=";
+                if (!tipoPrecision.equals("GPS")) {
+                    signo = "<>";
+                    typePrecision = "''";
+                }
+                String fIni = fechaInicio.replace('T', ' ');
+                String fFin = fechaFin.replace('T', ' ');
+                DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                pos = posRepo.tomarPosiciones(obj.getOperaciones().getUnidades().getId().toString(),
+                        obj.getDescripcion(), LocalDateTime.parse(fIni, format),
+                        LocalDateTime.parse(fFin, format), typePrecision, signo);
+            } catch (Exception e) {
+                log.error(
+                        "Fallo en la Generación de la Evidencia, Tomando las Posiciones en la BD, Causado por: "
+                                + e.getMessage(),
+                        e);
+                eviRepo.EliminarProgEvidens(usu.getId());
+                throw new RuntimeException("Fallo en la Generación de la Evidencia, Tomando las Posiciones en la BD");
+            }
 
-            // Enviar pendientes de firma si corresponde
-            enviarPendientesFirma(token, usuario, objetivos);
+            try {
+                pendientesFirma[0] += eviRepo.BuildFiles(obj, pos, tipoPrecision, fi, ff, pathOperacion,
+                        autenticado.getTip(), usu.getId(), incremento);
+            } catch (Exception e) {
+                eviRepo.EliminarProgEvidens(usu.getId());
+                log.error("Fallo en la Generación de la Evidencia, Construyendo Ficheros KML y CSV, Causado por: ",
+                        e.getMessage());
+                throw new RuntimeException("Fallo en la Generación de la Evidencia, " + e.getMessage());
+            }
 
-        } catch (Exception e) {
-            String err = e != null && e.getMessage() != null && e.getMessage().contains("Fallo") ? e.getMessage()
-                    : "Fallo inespecífico, generando KML";
-            log.error(err, e.getMessage());
-            limpiarProgresoPrevio(token); // Limpiar si ocurre un error
-            throw new RuntimeException(err);
-        } finally {
-            if (ftpClient != null && ftpClient.isConnected()) {
-                // Desconectar el FTP en el bloque finally
-                Desconectar(ftpClient);
+            porcientoActual = ProgEvidens.progEvi.get(usu.getId());
+            ProgEvidens.progEvi.replace(usu.getId(), porcientoActual + incremento);
+        });
+        ProgEvidens.progEvi.replace(usu.getId(), 90);
+
+        if (!ProgEvidens.ficherosPendientes.isEmpty() && ProgEvidens.ficherosPendientes.size() > 0
+                && ProgEvidens.ficherosPendientes.containsKey(usu.getId())) {
+
+            int inc = 3 / ProgEvidens.ficherosPendientes.size();
+
+            ProgEvidens.ficherosPendientes.get(usu.getId()).forEach((v) -> {
+                log.info(v);
+                String[] arrVal = null;
+
+                if (ProgEvidens.ftp == null || !ProgEvidens.ftp.isConnected()) {
+                    try {
+                        ProgEvidens.ftp = ConectarFTP(usu.getId());
+                    } catch (Exception e1) {
+                        eviRepo.EliminarProgEvidens(usu.getId());
+                        Desconectar(ProgEvidens.ftp);
+                        log.error("Fallo intentando conectar FTP para subir ficheros pendientes " + e1.getMessage());
+                        throw new RuntimeException("Fallo Conectando al FTP");
+                    }
+                }
+
+                if (v.contains("®")) {
+                    arrVal = v.split("®");
+                    try {
+                        ProgEvidens.ftp.changeWorkingDirectory("/");
+                        ProgEvidens.ftp.mkd(pathOperacion + arrVal[0]);
+                        FilesUpload(arrVal[1], pathOperacion + arrVal[0]);
+                    } catch (IOException e) {
+                        eviRepo.EliminarProgEvidens(usu.getId());
+                        log.error("Fallo al crear directorio o subir " + pathOperacion + arrVal[0]);
+                        log.error(e.getMessage());
+                        Desconectar(ProgEvidens.ftp);
+                        throw new RuntimeException(e.getMessage());
+                    }
+                    v = v.replace(arrVal[0] + "®", "");
+                } else {
+                    try {
+                        FilesUpload(v, pathOperacion + "/KMLS");
+                    } catch (Exception e) {
+                        eviRepo.EliminarProgEvidens(usu.getId());
+                        log.error(e.getMessage());
+                        Desconectar(ProgEvidens.ftp);
+                        throw new RuntimeException(e.getMessage());
+                    }
+                }
+                int vl = ProgEvidens.progEvi.get(usu.getId());
+                ProgEvidens.progEvi.replace(usu.getId(), vl + inc);
+            });
+            ProgEvidens.progEvi.replace(usu.getId(), 94);
+            if (ProgEvidens.ftp != null && ProgEvidens.ftp.isConnected()) {
+                Desconectar(ProgEvidens.ftp);
+            }
+        }
+
+        if (pendientesFirma.length > 0 && !pendientesFirma[0].isEmpty() && objs != null && objs.size() > 0) {
+            Objetivos obj = objs.get(0);
+            try {
+                PendientesFirma pf = new PendientesFirma();
+                pf.idDMA = Integer.valueOf(obj.getOperaciones().getIdDataminer());
+                pf.idElement = Integer.valueOf(obj.getOperaciones().getIdElement());
+                pf.ficheros = pendientesFirma[0];
+                ProgEvidens.pendientesFirma.replace(usu.getId(), pf);
+                // dataminer.enviarNombresCSV(Integer.valueOf(obj.getOperaciones().getIdDataminer()),
+                // Integer.valueOf(obj.getOperaciones().getIdElement()), pendientesFirma[0]);
+                // log.info("Se envio los nombres de fichero a firmar correctamente");
+                ProgEvidens.operacion.replace(usu.getId(), obj.getOperaciones());
+                ProgEvidens.progEvi.replace(usu.getId(), 95);
+            } catch (Exception e) {
+                log.error("Fallo Enviando a Dataminer Nombres de Ficheros a Firmar: ", e.getMessage());
+                log.info("pendientesFirma=" + pendientesFirma[0]);
+                eviRepo.EliminarProgEvidens(usu.getId());
+                throw new RuntimeException("Fallo Enviando a Dataminer Nombres de Ficheros a Firmar");
             }
         }
     }
 
-    // Autenticación y validación del usuario
-    private Usuarios validarYObtenerUsuario(String token) {
+    private void FilesUpload(String nombre, String camino) {
+        FileInputStream fis = null;
+
+        boolean si = false;
         try {
-            JwtObjectMap jwtObjectMap = obtenerJwtObjectMap(token);
-            return usuariosRepository.findById(Long.valueOf(jwtObjectMap.getId()))
-                    .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+            si = ProgEvidens.ftp.changeWorkingDirectory(camino);
+        } catch (IOException e) {
+            Desconectar(ProgEvidens.ftp);
+            EliminarFichero(nombre);
+            log.error("Fallo al Generar Evidencias, Cambiando al Directorio " + camino, e);
+            throw new RuntimeException("Fallo al Generar Evidencias, Cambiando al Directorio " + camino);
+        }
+
+        if (!si) {
+            Desconectar(ProgEvidens.ftp);
+            EliminarFichero(nombre);
+            log.error("Fallo al Generar Evidencias, Cambiando al Directorio " + camino);
+            throw new RuntimeException("Fallo al Generar Evidencias, Cambiando al Directorio " + camino);
+        }
+
+        try {
+            ProgEvidens.ftp.setBufferSize(2048);
+            ProgEvidens.ftp.enterLocalPassiveMode();
+            ProgEvidens.ftp.setFileType(FTP.BINARY_FILE_TYPE);
+
+            fis = new FileInputStream(nombre);
+            boolean uploadFile = ProgEvidens.ftp.storeFile(nombre, fis);
+            if (!uploadFile) {
+                Desconectar(ProgEvidens.ftp);
+                fis.close();
+                EliminarFichero(nombre);
+                log.error("Fallo al Generar Evidencias, Subiendo el Fichero " + nombre + " al FTP ");
+                throw new RuntimeException("Fallo al Generar Evidencias, Subiendo el Fichero " + nombre + " al FTP ");
+            } else {
+                fis.close();
+                EliminarFichero(nombre);
+            }
         } catch (Exception e) {
-            log.error("Error descomponiendo el token: {}", e.getMessage());
-            throw new RuntimeException("Token inválido", e);
+            log.error("Fallo al Generar Evidencias, Subiendo el Fichero " + nombre + " al FTP ", e);
+
+            if (fis != null) {
+                try {
+                    fis.close();
+                    EliminarFichero(nombre);
+                } catch (IOException er) {
+                    Desconectar(ProgEvidens.ftp);
+                    EliminarFichero(nombre);
+                    log.error("Fallo al Generar Evidencias, Subiendo el Fichero " + nombre + " al FTP ", er);
+                    throw new RuntimeException(
+                            "Fallo al Generar Evidencias, Subiendo el Fichero " + nombre + " al FTP ");
+                }
+            }
+
+            Desconectar(ProgEvidens.ftp);
+            log.error("Fallo al Generar Evidencias, Subiendo el Fichero " + nombre + " al FTP ");
+            throw new RuntimeException("Fallo al Generar Evidencias, Subiendo el Fichero " + nombre + " al FTP ");
         }
     }
 
-    // Descomposición del token JWT para extraer la información
-    private JwtObjectMap obtenerJwtObjectMap(String token) throws Exception {
+    private void EliminarFichero(String nombre) {
+        File fichero = new File(nombre);
+        if (fichero.delete()) {
+            log.info("Fue Eliminado el Fichero: " + nombre);
+        } else {
+            log.info("No se Pudo Eliminar el Fichero: " + nombre);
+        }
+    }
+
+    public List<String> ListarFicheros(String dir, int depth) throws IOException {
+        try (Stream<Path> stream = Files.walk(Paths.get(dir), depth)) {
+            return stream
+                    .filter(file -> !Files.isDirectory(file))
+                    .map(Path::getFileName)
+                    .map(Path::toString)
+                    .collect(Collectors.toList());
+        }
+    }
+
+    public JwtObjectMap TomarAutenticado(String token) throws Exception {
+        JwtObjectMap jwtObjectMap;
+
         try {
             String[] chunks = token.split("\\.");
             Base64.Decoder decoder = Base64.getUrlDecoder();
+            String header = new String(decoder.decode(chunks[0]));
             String payload = new String(decoder.decode(chunks[1]));
-            return objectMapper.readValue(payload.replace("Perfil", "perfil"), JwtObjectMap.class);
+
+            jwtObjectMap = objMap.readValue(payload.toString().replace("Perfil", "perfil"),
+                    JwtObjectMap.class);
+
+            return jwtObjectMap;
         } catch (Exception e) {
-            log.error("Error al descomponer el token", e);
-            throw new Exception("Error descomponiendo token", e);
+            log.error("Fallo la Obtención del TIP, al descomponer el token", e.getMessage());
+            throw new Exception("Fallo la Obtención del TIP, al descomponer el token");
         }
     }
 
-    private void limpiarProgresoPrevio(String token) {
-        ProgEvidens.progEvi.remove(token);
-        ProgEvidens.ficherosPendientes.remove(token);
-        ProgEvidens.advertencias.remove(token);
-        ProgEvidens.operacion.remove(token);
-        ProgEvidens.zipPendiente.remove(token);
-        ProgEvidens.isBuildingPackage.remove(token);
-        ProgEvidens.pendientesFirma.remove(token);
-    }
-
-    // Inicialización del progreso usando el token como clave
-    private void inicializarProgreso(String token) {
-        try {
-            ProgEvidens.progEvi.put(token, 0);
-            ProgEvidens.ficherosPendientes.put(token, new ArrayList<>());
-            ProgEvidens.advertencias.put(token, "");
-            ProgEvidens.operacion.put(token, new Operaciones());
-            ProgEvidens.zipPendiente.put(token, "");
-            ProgEvidens.isBuildingPackage.put(token, false);
-            ProgEvidens.pendientesFirma.put(token, new PendientesFirma());
-        } catch (Exception e) {
-            String err = "Fallo al inicializar el progreso de la evidencia";
-            log.error(err, e);
-            throw new RuntimeException(err + "--" + e.getMessage());
-        }
-    }
-
-    // Conexión al FTP
     @Override
-    public FTPClient ConectarFTP(String token, Boolean... passiveMode) throws Exception {
-        FTPClient ftpClient = configurarConexionFTP(passiveMode);
-        return ftpClient;
-    }
-
-    // Configura la conexión FTP
-    private FTPClient configurarConexionFTP(Boolean... passiveMode) throws IOException {
-        Conexiones conexion = conexionesRepository.findFirstByServicioContaining("ftp");
-        if (conexion == null) {
-            throw new RuntimeException("No se encontró un servicio FTP disponible");
+    public FTPClient ConectarFTP(long idAuth, Boolean... passiveMode) throws Exception {
+        FTPClient ftp = new FTPClient();
+        Conexiones con = conRepo.findFirstByServicioContaining("ftp");
+        if (con == null) {
+            if (idAuth > 0)
+                eviRepo.EliminarProgEvidens(idAuth);
+            log.error("Fallo, no Existe un Servicio entre las Conexiones, que Contenga la Palabra FTP");
+            throw new Exception("Fallo, no Existe un Servicio entre las Conexiones, que Contenga la Palabra FTP");
         }
-
-        String puerto = conexion.getPuerto();
-        if (puerto == null || puerto.isEmpty()) {
-            puerto = "21"; // Puerto FTP por defecto
-        }
-
-        FTPClient ftpClient = new FTPClient();
         try {
-            ftpClient.connect(conexion.getIpServicio(), Integer.parseInt(puerto));
+            ftp.connect(con.getIpServicio(),
+                    Integer.parseInt(((!Strings.isNullOrEmpty(con.getPuerto())) ? con.getPuerto() : "21")));
         } catch (Exception e) {
-            String err = "Fallo, intentando conectar con el servidor FTP.";
-            log.error(err, e.getMessage());
-            throw new RuntimeException(err);
+            ftp = null;
+            log.error("Fallo, conexión Fallida al servidor FTP " + con.getIpServicio() + ":" + con.getPuerto(),
+                    e);
+            throw new IOException(
+                    "Fallo, conexión Fallida al servidor FTP " + con.getIpServicio() + ":" + con.getPuerto());
+        }
+        int reply = ftp.getReplyCode();
+        if (!FTPReply.isPositiveCompletion(reply)) {
+            ftp.disconnect();
+            ftp = null;
+            log.error("getReplyCode: Conexión Fallida al servidor FTP " + con.getIpServicio() + ":" + con.getPuerto());
+            throw new IOException(
+                    "Fallo, conexión Fallida al servidor FTP " + con.getIpServicio() + ":" + con.getPuerto());
         }
 
-        if (!FTPReply.isPositiveCompletion(ftpClient.getReplyCode())) {
-            ftpClient.disconnect();
-            throw new RuntimeException("Fallo al conectar con el servidor FTP");
-        }
-
-        if (!ftpClient.login(conexion.getUsuario(), conexion.getPassword())) {
-            ftpClient.disconnect();
-            throw new RuntimeException("Fallo en la autenticación con el servidor FTP");
-        }
-
-        if (passiveMode != null && passiveMode.length > 0 && passiveMode[0]) {
-            ftpClient.enterLocalPassiveMode();
-        }
-
-        ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
-
-        if (conexion.getRuta() != null && !conexion.getRuta().isEmpty()) {
-            baseDir = conexion.getRuta();
-        }
-
-        boolean dirExists = ftpClient.changeWorkingDirectory(baseDir);
-        if (!dirExists) {
-            log.error("Fallo, la ruta suministrada en la conexión FTP no es válida");
-            baseDir = "/";
-            ftpClient.changeWorkingDirectory(baseDir);
-        }
-
-        return ftpClient;
-    }
-
-    // Crear la estructura de directorios en el FTP
-    private String crearEstructuraDirectorio(FTPClient ftpClient, List<Objetivos> objetivos, String fechaInicio,
-            String fechaFin) throws IOException {
-        Objetivos objetivo = objetivos.get(0); // Se asume que todos los objetivos están relacionados con la misma
-                                               // operación
-        String carpetaUnidad = objetivo.getOperaciones().getUnidades().getDenominacion();
-        String carpetaOperacion = objetivo.getOperaciones().getDescripcion();
-
-        String unidadesDir = baseDir + "/UNIDADES/";
-        unidadesDir = unidadesDir.replace("//", "/");
-
-        // Crear la estructura de directorios
-        crearDirectorios(ftpClient,
-                unidadesDir,
-                unidadesDir + carpetaUnidad,
-                unidadesDir + carpetaUnidad + "/INFORMES " + carpetaOperacion,
-                unidadesDir + carpetaUnidad + "/INFORMES " + carpetaOperacion + "/PERSONALIZADOS",
-                unidadesDir + carpetaUnidad + "/INFORMES " + carpetaOperacion + "/ORIGINALES",
-                unidadesDir + carpetaUnidad + "/INFORMES " + carpetaOperacion + "/PENDIENTES DE FIRMA",
-                unidadesDir + carpetaUnidad + "/INFORMES " + carpetaOperacion + "/FIRMADOS");
-
-        String fi = fechaInicio.replace(":", "_");
-        String ff = fechaFin.replace(":", "_");
-        String operacionPath = unidadesDir + carpetaUnidad
-                + "/INFORMES " + carpetaOperacion
-                + "/PERSONALIZADOS/"
-                + carpetaOperacion + "(" + fi.replace("T", " ") + "-" + ff.replace("T", " ") + ")";
-
-        try {
-            ftpClient.changeWorkingDirectory(operacionPath);
-            ftpClient.mkd("KMLS");
-        } catch (Exception e) {
-            String err = "Fallo creando directorio KMLS";
-            log.error(err, e);
-            throw new RuntimeException(err);
-        }
-
-        return operacionPath;
-    }
-
-    // Crear directorios en el FTP de manera robusta
-    private void crearDirectorios(FTPClient ftpClient, String... paths) throws IOException {
-        try {
-            for (String path : paths) {
-                if (!ftpClient.changeWorkingDirectory(path)) {
-                    ftpClient.mkd(path);
-                }
-            }
-        } catch (Exception e) {
-            String err = "Fallo creando directorios";
-            log.error(err, e);
-            throw new RuntimeException(err);
-        }
-    }
-
-    // Procesar los objetivos y generar los archivos
-    private void procesarObjetivos(FTPClient ftpClient, String token, Usuarios usuario, List<Objetivos> objetivos,
-            String tipoPrecision, String fechaInicio, String fechaFin, String pathOperacion) {
-        int totalObjetivos = objetivos.size();
-        int incremento = 89 / totalObjetivos;
-        int progresoActual = 0;
-
-        StringBuilder pendientesFirmaStr = new StringBuilder();
-
-        for (Objetivos objetivo : objetivos) {
-            List<Posiciones> posiciones = null;
-            try {
-                posiciones = obtenerPosiciones(objetivo, tipoPrecision, fechaInicio, fechaFin);
-            } catch (Exception e) {
-                String err = e != null && e.getMessage() != null && e.getMessage().contains("Fallo") ? e.getMessage()
-                        : "Fallo, obteniendo posiciones";
-                log.error(err, e);
-                throw new RuntimeException(err);
-            }
-
-            try {
-                String pendientesFirma = construirFicherosKML(objetivo, posiciones, tipoPrecision, fechaInicio,
-                        fechaFin,
-                        pathOperacion, usuario.getTip(), usuario.getId(), token);
-
-                if (pendientesFirma != null && !pendientesFirma.isEmpty()) {
-                    pendientesFirmaStr.append(pendientesFirma);
-                }
-
-                progresoActual += incremento;
-                actualizarProgreso(token, progresoActual);
-
-            } catch (Exception e) {
-                log.error("Error construyendo ficheros KML/CSV: {}", e.getMessage());
-                limpiarProgresoPrevio(token);
-                throw new RuntimeException("Error construyendo ficheros", e);
-            }
-        }
-
-        subirFicherosPendientes(ftpClient, token, pathOperacion);
-
-        // Guardar pendientes de firma
-        if (pendientesFirmaStr.length() > 0) {
-            ProgEvidens.pendientesFirma.put(token,
-                    crearPendientesFirma(objetivos.get(0), pendientesFirmaStr.toString()));
-            ProgEvidens.operacion.put(token, objetivos.get(0).getOperaciones());
-        }
-
-        completarProgreso(token);
-    }
-
-    // Obtener las posiciones de la base de datos
-    private List<Posiciones> obtenerPosiciones(Objetivos objetivo, String tipoPrecision, String fechaInicio,
-            String fechaFin) {
-        try {
-            String fInicio = fechaInicio.replace('T', ' ');
-            String fFin = fechaFin.replace('T', ' ');
-            String signo = tipoPrecision.equals("GPS") ? "=" : "<>";
-            String typePrecision = tipoPrecision.equals("GPS") ? "GPS" : "''";
-
-            return posicionesRepository.tomarPosiciones(
-                    objetivo.getOperaciones().getUnidades().getId().toString(),
-                    objetivo.getDescripcion(),
-                    LocalDateTime.parse(fInicio, DATE_FORMATTER),
-                    LocalDateTime.parse(fFin, DATE_FORMATTER),
-                    typePrecision,
-                    signo);
-        } catch (Exception e) {
-            log.error("Error obteniendo posiciones para objetivo: {}", e.getMessage());
-            throw new RuntimeException("Error obteniendo posiciones", e);
-        }
-    }
-
-    // Construir los ficheros KML y CSV
-    private String construirFicherosKML(Objetivos objetivo, List<Posiciones> posiciones, String tipoPrecision,
-            String fechaInicio, String fechaFin, String pathOperacion, String tip,
-            long idAuth, String token) {
-        try {
-            return evidenciaRepository.BuildFiles(objetivo, posiciones, tipoPrecision, fechaInicio, fechaFin,
-                    pathOperacion, tip, idAuth, token);
-        } catch (Exception e) {
-            log.error("Error construyendo ficheros KML/CSV: {}", e.getMessage());
-            throw new RuntimeException("Error construyendo ficheros", e);
-        }
-    }
-
-    // Actualizar el progreso de la solicitud usando el token
-    private void actualizarProgreso(String token, int nuevoProgreso) {
-        ProgEvidens.progEvi.put(token, nuevoProgreso);
-    }
-
-    // Subir los ficheros pendientes al FTP
-    private void subirFicherosPendientes(FTPClient ftpClient, String token, String pathOperacion) {
-        List<String> pendientes = ProgEvidens.ficherosPendientes.get(token);
-
-        for (String fichero : pendientes) {
-            try {
-                FilesUpload(ftpClient, fichero, pathOperacion + "/KMLS");
-            } catch (Exception e) {
-                log.error("Fallo subiendo fichero al FTP: {}", e.getMessage());
-                limpiarProgresoPrevio(token);
-                throw new RuntimeException("Fallo subiendo fichero al FTP", e);
-            }
-        }
-    }
-
-    // Método para subir archivos al FTP
-    private void FilesUpload(FTPClient ftpClient, String nombre, String camino) throws IOException {
-        FileInputStream fis = null;
-        try {
-            log.info("nombre del fichero: " + nombre);
-            log.info("Camino donde se va a subir: " + camino);
-            fis = new FileInputStream(nombre);
-            ftpClient.changeWorkingDirectory(camino);
-            boolean uploadFile = ftpClient.storeFile(nombre, fis);
-            if (!uploadFile) {
-                throw new IOException("Fallo al subir el fichero " + nombre + " al FTP");
-            } else {
-                eliminarFicheroLocal(nombre);
-            }
-        } catch (Exception e) {
-            eliminarFicheroLocal(nombre);
-            throw e;
-        }
-    }
-
-    // Eliminar fichero local después de subirlo
-    private void eliminarFicheroLocal(String nombre) {
-        File fichero = new File(nombre);
-        if (fichero.delete()) {
-            log.info("Fichero eliminado: {}", nombre);
+        boolean successLogin = ftp.login(con.getUsuario(), con.getPassword());
+        int replyCode = ftp.getReplyCode();
+        if (successLogin) {
+            log.info("La autenticación fue satisfactoria.");
         } else {
-            log.warn("No se pudo eliminar el fichero: {}", nombre);
+            log.info("Fallo intentando la autenticación con el servidor ftp");
+            Desconectar(ftp);
+            throw new IOException("Fallo intentando la autenticación con el servidor ftp");
         }
-    }
 
-    // Completar el progreso de la operación
-    private void completarProgreso(String token) {
-        ProgEvidens.progEvi.put(token, 100);
-        log.info("Progreso completado para el token {}", token);
-    }
-
-    // Enviar pendientes de firma al sistema externo (Dataminer)
-    private void enviarPendientesFirma(String token, Usuarios usuario, List<Objetivos> objetivos) {
-        if (ProgEvidens.pendientesFirma.containsKey(token) && !ProgEvidens.ficherosPendientes.get(token).isEmpty()) {
-            try {
-                Objetivos obj = objetivos.get(0);
-                PendientesFirma pf = ProgEvidens.pendientesFirma.get(token);
-                // Aquí llamarías al cliente Dataminer para enviar los pendientes de firma
-                // Por ejemplo:
-                // dataminer.enviarNombresCSV(pf.getIdDMA(), pf.getIdElement(),
-                // pf.getFicheros());
-                log.info("Pendientes de firma enviados correctamente para el token {}", token);
-            } catch (Exception e) {
-                log.error("Fallo enviando pendientes de firma: {}", e.getMessage());
-                limpiarProgresoPrevio(token);
-                throw new RuntimeException("Fallo enviando pendientes de firma", e);
-            }
-        }
-    }
-
-    // Crear objeto PendientesFirma
-    private PendientesFirma crearPendientesFirma(Objetivos objetivo, String ficheros) {
-        PendientesFirma pf = new PendientesFirma();
-        pf.setIdDMA(Integer.valueOf(objetivo.getOperaciones().getIdDataminer()));
-        pf.setIdElement(Integer.valueOf(objetivo.getOperaciones().getIdElement()));
-        pf.setFicheros(ficheros);
-        return pf;
-    }
-
-    // Desconectar FTP y liberar recursos
-    @Override
-    public void Desconectar(FTPClient ftpClient) {
         try {
-            if (ftpClient.isConnected()) {
-                ftpClient.logout(); // Desloguear el FTP
-                ftpClient.disconnect(); // Desconectar del servidor FTP
-                log.info("Conexión FTP desconectada exitosamente.");
+
+            if (passiveMode != null && passiveMode.length > 0 && passiveMode[0]) {
+                log.info("Creando conexión pasiva al ftp");
+                ftp.enterLocalPassiveMode();
+            }
+
+            ftp.setControlKeepAliveTimeout(1000);
+        } catch (Exception e) {
+            ftp.disconnect();
+            ftp = null;
+            log.error("Usuario o Contraseña Incorrecto, al Intentar Autenticarse en Servidor FTP " + con.getIpServicio()
+                    + ":" + con.getPuerto(), e);
+            throw new IOException("Fallo, Usuario o Contraseña Incorrecto, al Intentar Autenticarse en Servidor FTP "
+                    + con.getIpServicio() + ":" + con.getPuerto());
+        }
+
+        if (con.getRuta() != null && con.getRuta() != "") {
+            BaseDir = con.getRuta();
+        }
+
+        boolean dirExists = ftp.changeWorkingDirectory(BaseDir);
+        if (!dirExists) {
+            log.error("Fallo, la ruta suministrada en la conexión ftp, no es válida");
+            BaseDir = "/";
+            ftp.changeWorkingDirectory(BaseDir);
+        }
+
+        return ftp;
+    }
+
+    @Override
+    public void Desconectar(FTPClient ftp) {
+        try {
+            if (ftp.isConnected()) {
+                ftp.logout();
+                ftp.disconnect();
+                if (ftp != null && ftp.isConnected())
+                    ftp = null;
             }
         } catch (IOException e) {
-            log.error("Error al desconectar el FTP: {}", e.getMessage());
+            log.error("Fallo Desconectando FTP: ", e.getMessage());
+            throw new RuntimeException("Fallo Desconectando FTP");
         }
     }
 }
