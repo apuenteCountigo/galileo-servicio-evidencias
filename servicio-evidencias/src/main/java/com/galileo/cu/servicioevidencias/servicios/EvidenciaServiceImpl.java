@@ -248,18 +248,30 @@ public class EvidenciaServiceImpl implements EvidenciaService {
                 + "/PERSONALIZADOS/"
                 + carpetaOperacion + "(" + fi.replace("T", " ") + "-" + ff.replace("T", " ") + ")/";
 
-        ftpClient.changeWorkingDirectory(operacionPath);
-        ftpClient.mkd("KMLS");
+        try {
+            ftpClient.changeWorkingDirectory(operacionPath);
+            ftpClient.mkd("KMLS");
+        } catch (Exception e) {
+            String err = "Fallo creando directorio KMLS";
+            log.error(err, e);
+            throw new RuntimeException(err);
+        }
 
         return operacionPath;
     }
 
     // Crear directorios en el FTP de manera robusta
     private void crearDirectorios(FTPClient ftpClient, String... paths) throws IOException {
-        for (String path : paths) {
-            if (!ftpClient.changeWorkingDirectory(path)) {
-                ftpClient.mkd(path);
+        try {
+            for (String path : paths) {
+                if (!ftpClient.changeWorkingDirectory(path)) {
+                    ftpClient.mkd(path);
+                }
             }
+        } catch (Exception e) {
+            String err = "Fallo creando directorios";
+            log.error(err, e);
+            throw new RuntimeException(err);
         }
     }
 
@@ -273,7 +285,15 @@ public class EvidenciaServiceImpl implements EvidenciaService {
         StringBuilder pendientesFirmaStr = new StringBuilder();
 
         for (Objetivos objetivo : objetivos) {
-            List<Posiciones> posiciones = obtenerPosiciones(objetivo, tipoPrecision, fechaInicio, fechaFin);
+            List<Posiciones> posiciones = null;
+            try {
+                posiciones = obtenerPosiciones(objetivo, tipoPrecision, fechaInicio, fechaFin);
+            } catch (Exception e) {
+                String err = e != null && e.getMessage() != null && e.getMessage().contains("Fallo") ? e.getMessage()
+                        : "Fallo, obteniendo posiciones";
+                log.error(err, e);
+                throw new RuntimeException(err);
+            }
 
             try {
                 String pendientesFirma = construirFicherosKML(objetivo, posiciones, tipoPrecision, fechaInicio,
