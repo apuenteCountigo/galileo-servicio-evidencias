@@ -83,7 +83,6 @@ public class EvidenciaServiceImpl implements EvidenciaService {
 
         FTPClient ftpClient = null;
         try {
-            log.info("token= " + token);
             // Conectar al FTP
             ftpClient = ConectarFTP(token, true);
 
@@ -98,9 +97,11 @@ public class EvidenciaServiceImpl implements EvidenciaService {
             enviarPendientesFirma(token, usuario, objetivos);
 
         } catch (Exception e) {
-            log.error("Error durante la generación de KML: {}", e.getMessage());
+            String err = e != null && e.getMessage() != null && e.getMessage().contains("Fallo") ? e.getMessage()
+                    : "Fallo inespecífico, generando KML";
+            log.error(err, e.getMessage());
             limpiarProgresoPrevio(token); // Limpiar si ocurre un error
-            throw new RuntimeException("Error al generar KML", e);
+            throw new RuntimeException(err);
         } finally {
             if (ftpClient != null && ftpClient.isConnected()) {
                 // Desconectar el FTP en el bloque finally
@@ -182,7 +183,7 @@ public class EvidenciaServiceImpl implements EvidenciaService {
 
         FTPClient ftpClient = new FTPClient();
         try {
-            ftpClient.connect(conexion.getIpServicio(), Integer.parseInt(conexion.getPuerto()));
+            ftpClient.connect(conexion.getIpServicio(), Integer.parseInt(puerto));
         } catch (Exception e) {
             String err = "Fallo, intentando conectar con el servidor FTP.";
             log.error(err, e.getMessage());
