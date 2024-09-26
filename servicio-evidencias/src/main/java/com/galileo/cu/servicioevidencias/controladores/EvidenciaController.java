@@ -48,6 +48,7 @@ import com.galileo.cu.servicioevidencias.repositorios.ProgEvidens;
 import com.galileo.cu.servicioevidencias.repositorios.UsuariosRepository;
 import com.galileo.cu.servicioevidencias.servicios.EvidenciaService;
 import com.galileo.cu.servicioevidencias.servicios.FtpCsvService;
+import com.galileo.cu.servicioevidencias.servicios.FtpZipService;
 import com.google.common.base.Strings;
 import com.google.common.util.concurrent.ExecutionError;
 
@@ -78,6 +79,9 @@ public class EvidenciaController {
 
     @Autowired
     FtpCsvService ftpCsv;
+
+    @Autowired
+    FtpZipService ftpZip;
 
     Dictionary errores = new Hashtable();
 
@@ -273,6 +277,31 @@ public class EvidenciaController {
             log.error(err, e);
             throw new IOException(err);
         }
+    }
+
+    @GetMapping("/listZIP")
+    public Page<TreeNode> listZIP(
+            @RequestParam(defaultValue = "") String unidadName,
+            @RequestParam(defaultValue = "") String objetivoName,
+            @RequestParam(defaultValue = "") String operacionName,
+            @RequestParam(defaultValue = "") String fechaInicio,
+            @RequestParam(defaultValue = "") String fechaFin,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "id,asc") String[] sort) throws IOException {
+        if (StringUtils.isEmpty(unidadName) ||
+                StringUtils.isEmpty(operacionName) ||
+                StringUtils.isEmpty(fechaInicio) ||
+                StringUtils.isEmpty(fechaFin)) {
+            String err = "Fallo, faltan parámetros en la petición";
+            log.error("{}, intentando listar los zip", err);
+            throw new ExecutionError(err, null);
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
+        // ftpCsv.listCsvFiles(pageable);
+        return ftpZip.listZipFiles(pageable, unidadName, operacionName, fechaInicio, fechaFin);
+        // return ResponseEntity.ok("downloadCSV");
     }
 
     @GetMapping("/pathZip")
