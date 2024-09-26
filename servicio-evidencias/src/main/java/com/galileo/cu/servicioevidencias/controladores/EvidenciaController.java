@@ -284,15 +284,11 @@ public class EvidenciaController {
             @RequestParam(defaultValue = "") String unidadName,
             @RequestParam(defaultValue = "") String objetivoName,
             @RequestParam(defaultValue = "") String operacionName,
-            @RequestParam(defaultValue = "") String fechaInicio,
-            @RequestParam(defaultValue = "") String fechaFin,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "id,asc") String[] sort) throws IOException {
         if (StringUtils.isEmpty(unidadName) ||
-                StringUtils.isEmpty(operacionName) ||
-                StringUtils.isEmpty(fechaInicio) ||
-                StringUtils.isEmpty(fechaFin)) {
+                StringUtils.isEmpty(operacionName)) {
             String err = "Fallo, faltan parámetros en la petición";
             log.error("{}, intentando listar los zip", err);
             throw new ExecutionError(err, null);
@@ -300,7 +296,7 @@ public class EvidenciaController {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
         // ftpCsv.listCsvFiles(pageable);
-        return ftpZip.listZipFiles(pageable, unidadName, operacionName, fechaInicio, fechaFin);
+        return ftpZip.listZipFiles(pageable, unidadName, operacionName);
         // return ResponseEntity.ok("downloadCSV");
     }
 

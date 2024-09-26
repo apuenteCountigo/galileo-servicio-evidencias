@@ -46,16 +46,8 @@ public class FtpZipService {
     public Page<TreeNode> listZipFiles(
             Pageable pageable,
             String unidadName,
-            String operacionName,
-            String fechaInicio,
-            String fechaFin) throws IOException {
+            String operacionName) throws IOException {
         String baseDir = DEFAULT_DIRECTORY;
-
-        String fechaInicioFormateada = convertirFecha(fechaInicio);
-        String fechaFinFormateada = convertirFecha(fechaFin);
-
-        log.info(fechaInicioFormateada);
-        log.info(fechaFinFormateada);
 
         Conexiones con = getFTPConnection()
                 .orElseThrow(() -> new IOException("No existe un servicio FTP entre las conexiones"));
@@ -80,7 +72,7 @@ public class FtpZipService {
 
         log.info(ftp.printWorkingDirectory());
         // 2. Crear path
-        String path = crearPath(unidadName, operacionName, fechaInicioFormateada, fechaFinFormateada);
+        String path = crearPath(unidadName, operacionName);
 
         log.info(path);
 
@@ -311,8 +303,7 @@ public class FtpZipService {
         return dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH_mm_ss"));
     }
 
-    private String crearPath(String unidadName, String operacionName, String fechaInicioFormateada,
-            String fechaFinFormateada) {
+    private String crearPath(String unidadName, String operacionName) {
         return "UNIDADES/" + unidadName + "/INFORMES " + operacionName + "/PERSONALIZADOS";
     }
 
