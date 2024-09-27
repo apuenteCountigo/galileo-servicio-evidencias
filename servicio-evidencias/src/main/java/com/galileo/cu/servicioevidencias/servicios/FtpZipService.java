@@ -341,24 +341,25 @@ public class FtpZipService {
 
         FTPFile[] archivos = ftp.listFiles();
 
-        long indx = 0;
-        if (pageable.getOffset() <= archivos.length) {
-            indx = pageable.getOffset();
-        } else {
-            throw new IOException("Fallo, el indice de paginación no es correcto.");
+        long indx = pageable.getOffset();
+
+        if (indx >= archivos.length) {
+            throw new IOException("Fallo, el índice de paginación no es correcto.");
         }
 
-        for (int j = (int) indx; j < archivos.length; j++) {
+        int pageSize = pageable.getPageSize();
+        long endIndex = Math.min(indx + pageSize, archivos.length);
+
+        for (int j = (int) indx; j < endIndex; j++) {
             FTPFile archivo = archivos[j];
             if (archivo.getName().toLowerCase().endsWith(".zip")) {
-                TreeNode fileNode = new TreeNode(archivo.getName(), basePath, null,
+                TreeNode fileNode = new TreeNode(
+                        archivo.getName(),
+                        basePath,
+                        null,
                         true,
                         false);
                 root.add(fileNode);
-            }
-
-            if (pageable.getPageSize() - 1 == j) {
-                break;
             }
         }
 
