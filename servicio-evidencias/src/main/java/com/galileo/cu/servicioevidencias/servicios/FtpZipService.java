@@ -377,6 +377,6 @@ public class FtpZipService {
         String json = objectMapper.writeValueAsString(root);
         log.info("Contenido del tree: {}", json);
 
-        return new PageImpl<>(root, pageable, root.size());
+        return new PageImpl<>(root, pageable, archivosZip.size());
     }
 }
