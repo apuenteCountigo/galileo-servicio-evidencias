@@ -349,8 +349,11 @@ public class FtpZipService {
 
         int pageSize = pageable.getPageSize();
         long endIndex = Math.min(indx + pageSize, archivos.length);
+        log.info("indx: {}, pageSize: {}, endIndex: {}, archivos.length: {}", indx, pageSize, endIndex,
+                archivos.length);
 
         for (int j = (int) indx; j < endIndex; j++) {
+            log.info("DENTRO");
             FTPFile archivo = archivos[j];
             if (archivo.getName().toLowerCase().endsWith(".zip")) {
                 TreeNode fileNode = new TreeNode(
