@@ -76,15 +76,16 @@ public class FtpZipService {
 
         log.info(path);
 
-        List<String> directories = getDirectoriesFTP(ftp, baseDir, path, pageable);
-        if (directories.size() > 0) {
-            log.info("Primer directorio: {}, Cantidad: {}", directories.get(0), directories.size());
-        } else {
-            String err = "Fallo, no existen evidencias generadas";
-            log.error("{}, ", err);
-            disconnectFTP(ftp);
-            throw new IOException(err);
-        }
+        // List<String> directories = getDirectoriesFTP(ftp, baseDir, path, pageable);
+        // if (directories.size() > 0) {
+        // log.info("Primer directorio: {}, Cantidad: {}", directories.get(0),
+        // directories.size());
+        // } else {
+        // String err = "Fallo, no existen evidencias generadas";
+        // log.error("{}, ", err);
+        // disconnectFTP(ftp);
+        // throw new IOException(err);
+        // }
 
         Page<TreeNode> tree = treeBuild(ftp, baseDir, path, pageable);
 
@@ -339,13 +340,25 @@ public class FtpZipService {
         ftp.changeWorkingDirectory(basePath);
 
         FTPFile[] archivos = ftp.listFiles();
-        for (int j = 0; j < archivos.length; j++) {
+
+        long indx = 0;
+        if (pageable.getOffset() <= archivos.length) {
+            indx = pageable.getOffset();
+        } else {
+            throw new IOException("Fallo, el indice de paginación no es correcto.");
+        }
+
+        for (int j = (int) indx; j < archivos.length; j++) {
             FTPFile archivo = archivos[j];
             if (archivo.getName().toLowerCase().endsWith(".zip")) {
                 TreeNode fileNode = new TreeNode(archivo.getName(), basePath, null,
                         true,
                         false);
                 root.add(fileNode);
+            }
+
+            if (pageable.getPageSize() - 1 == j) {
+                break;
             }
         }
 
