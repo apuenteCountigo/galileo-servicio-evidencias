@@ -26,7 +26,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.Optional;
 
@@ -344,15 +346,12 @@ public class FtpCsvService {
     }
 
     private Page<TreeNode> treeBuild(FTPClient ftp, String baseDir, String basePath, List<String> directorios,
-            Pageable pageable)
-            throws IOException {
-        // TreeNode root = new TreeNode("root", "0", new ArrayList<>(), true, false);
-        List<TreeNode> root = new ArrayList<>();
+            Pageable pageable) throws IOException {
+        // Lista total de archivos .csv con sus rutas
+        List<FileEntry> allCsvFiles = new ArrayList<>();
 
-        for (int i = 0; i < directorios.size(); i++) {
-            String directorio = directorios.get(i);
-            TreeNode dirNode = new TreeNode(directorio, basePath + "/" + directorio, new ArrayList<>(),
-                    false, false);
+        // Recopilar todos los archivos .csv de todas las carpetas
+        for (String directorio : directorios) {
             ftp.changeWorkingDirectory(baseDir);
             ftp.changeWorkingDirectory(basePath + "/" + directorio);
             log.info("*********************************");
@@ -360,23 +359,85 @@ public class FtpCsvService {
             log.info("*********************************");
 
             FTPFile[] archivos = ftp.listFiles();
-            for (int j = 0; j < archivos.length; j++) {
-                FTPFile archivo = archivos[j];
-                if (archivo.getName().toLowerCase().endsWith(".csv")) {
-                    TreeNode fileNode = new TreeNode(archivo.getName(), basePath + "/" + directorio, null,
-                            true,
-                            false);
-                    dirNode.getChildren().add(fileNode);
+            for (FTPFile archivo : archivos) {
+                if (archivo.isFile() && archivo.getName().toLowerCase().endsWith(".csv")) {
+                    // Almacenar la ruta completa del archivo y su nombre
+                    allCsvFiles.add(new FileEntry(directorio, archivo.getName()));
                 }
             }
-
-            root.add(dirNode);
         }
 
-        ftp.changeWorkingDirectory(baseDir);
+        // Verificar que el offset es válido
+        long offset = pageable.getOffset();
+        int pageSize = pageable.getPageSize();
+        int totalFiles = allCsvFiles.size();
+
+        if (offset >= totalFiles) {
+            throw new IOException("Fallo, el índice de paginación no es correcto.");
+        }
+
+        // Calcular el índice final para la paginación
+        int endIndex = (int) Math.min(offset + pageSize, totalFiles);
+
+        // Obtener la sublista de archivos para la página actual
+        List<FileEntry> pageFiles = allCsvFiles.subList((int) offset, endIndex);
+
+        // Construir la estructura del árbol solo con los archivos de la página actual
+        Map<String, TreeNode> directoryNodes = new HashMap<>();
+        for (FileEntry fileEntry : pageFiles) {
+            String directorio = fileEntry.getDirectory();
+            String fileName = fileEntry.getFileName();
+
+            // Obtener o crear el nodo de la carpeta
+            TreeNode dirNode = directoryNodes.get(directorio);
+            if (dirNode == null) {
+                dirNode = new TreeNode(
+                        directorio,
+                        basePath + "/" + directorio,
+                        new ArrayList<>(),
+                        false,
+                        false);
+                directoryNodes.put(directorio, dirNode);
+            }
+
+            // Crear el nodo del archivo y añadirlo a la carpeta
+            TreeNode fileNode = new TreeNode(
+                    fileName,
+                    basePath + "/" + directorio,
+                    null,
+                    true,
+                    false);
+            dirNode.getChildren().add(fileNode);
+        }
+
+        // Construir la lista final de nodos raíz (carpetas que contienen los archivos
+        // de la página)
+        List<TreeNode> root = new ArrayList<>(directoryNodes.values());
+
+        // Serializar el árbol para el registro (opcional)
         String json = objectMapper.writeValueAsString(root);
         log.info("Contenido del tree: {}", json);
 
-        return new PageImpl<>(root, pageable, root.size());
+        // Devolver la página con el número total de archivos .csv
+        return new PageImpl<>(root, pageable, totalFiles);
+    }
+
+    // Clase auxiliar para almacenar la información del archivo
+    private static class FileEntry {
+        private String directory;
+        private String fileName;
+
+        public FileEntry(String directory, String fileName) {
+            this.directory = directory;
+            this.fileName = fileName;
+        }
+
+        public String getDirectory() {
+            return directory;
+        }
+
+        public String getFileName() {
+            return fileName;
+        }
     }
 }
