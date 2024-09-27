@@ -341,29 +341,36 @@ public class FtpZipService {
 
         FTPFile[] archivos = ftp.listFiles();
 
-        long indx = pageable.getOffset();
+        long offset = pageable.getOffset();
+        int pageSize = pageable.getPageSize();
 
-        if (indx >= archivos.length) {
+        List<FTPFile> archivosZip = new ArrayList<>();
+
+        // Filtrar los archivos que son ficheros y terminan con '.zip'
+        for (FTPFile archivo : archivos) {
+            if (archivo.isFile() && archivo.getName().toLowerCase().endsWith(".zip")) {
+                archivosZip.add(archivo);
+            }
+        }
+
+        // Verificar que el offset es válido
+        if (offset >= archivosZip.size()) {
             throw new IOException("Fallo, el índice de paginación no es correcto.");
         }
 
-        int pageSize = pageable.getPageSize();
-        long endIndex = Math.min(indx + pageSize, archivos.length);
-        log.info("indx: {}, pageSize: {}, endIndex: {}, archivos.length: {}", indx, pageSize, endIndex,
-                archivos.length);
+        // Calcular el índice final para la paginación
+        long endIndex = Math.min(offset + pageSize, archivosZip.size());
 
-        for (int j = (int) indx; j < endIndex; j++) {
-            log.info("DENTRO");
-            FTPFile archivo = archivos[j];
-            if (archivo.getName().toLowerCase().endsWith(".zip")) {
-                TreeNode fileNode = new TreeNode(
-                        archivo.getName(),
-                        basePath,
-                        null,
-                        true,
-                        false);
-                root.add(fileNode);
-            }
+        // Iterar sobre la página de archivos filtrados
+        for (int i = (int) offset; i < endIndex; i++) {
+            FTPFile archivo = archivosZip.get(i);
+            TreeNode fileNode = new TreeNode(
+                    archivo.getName(),
+                    basePath,
+                    null,
+                    true,
+                    false);
+            root.add(fileNode);
         }
 
         ftp.changeWorkingDirectory(baseDir);
