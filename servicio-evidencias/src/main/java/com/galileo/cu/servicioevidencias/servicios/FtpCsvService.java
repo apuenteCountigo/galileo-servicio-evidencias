@@ -100,19 +100,8 @@ public class FtpCsvService {
 
         Page<TreeNode> tree = treeBuild(ftp, baseDir, path, directories, pageable);
 
-        Page<String> listFiles = null;
-        try {
-            listFiles = ListFiles(ftp, pageable);
-        } catch (Exception e) {
-            String err = "Fallo al obtener listado de ficheros .csv";
-            log.error(err, e);
-            disconnectFTP(ftp);
-            throw new IOException(err, e);
-
-        }
         disconnectFTP(ftp);
         return tree;
-        // return listFiles;
     }
 
     private Optional<Conexiones> getFTPConnection() {
