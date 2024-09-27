@@ -359,6 +359,7 @@ public class FtpCsvService {
                 if (archivo.isFile() && archivo.getName().toLowerCase().endsWith(".csv")) {
                     // Almacenar la ruta completa del archivo y su nombre
                     allCsvFiles.add(new FileEntry(directorio, archivo.getName()));
+                    log.info("directorio: {}, fichero: {}", directorio, archivo.getName());
                 }
             }
         }
