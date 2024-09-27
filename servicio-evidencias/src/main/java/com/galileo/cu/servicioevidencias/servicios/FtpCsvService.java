@@ -338,11 +338,7 @@ public class FtpCsvService {
         }
 
         ftp.changeWorkingDirectory(baseDir);
-
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), directorios.size());
-        // int end = Math.min((start + pageable.getPageSize()), directorios.size());
-        return directorios.subList(start, end);
+        return directorios;
     }
 
     private Page<TreeNode> treeBuild(FTPClient ftp, String baseDir, String basePath, List<String> directorios,
