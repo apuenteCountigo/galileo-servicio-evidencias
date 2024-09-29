@@ -285,6 +285,7 @@ public class EvidenciaController {
             @RequestParam(defaultValue = "") String unidadName,
             @RequestParam(defaultValue = "") String objetivoName,
             @RequestParam(defaultValue = "") String operacionName,
+            @RequestParam(defaultValue = "") String filterName,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "id,asc") String[] sort) throws IOException {
@@ -297,7 +298,7 @@ public class EvidenciaController {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
         // ftpCsv.listCsvFiles(pageable);
-        return ftpZip.listZipFiles(pageable, unidadName, operacionName);
+        return ftpZip.listZipFiles(pageable, unidadName, operacionName, filterName);
         // return ResponseEntity.ok("downloadCSV");
     }
 

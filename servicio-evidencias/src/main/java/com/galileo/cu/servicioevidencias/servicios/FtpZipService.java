@@ -46,7 +46,7 @@ public class FtpZipService {
     public Page<TreeNode> listZipFiles(
             Pageable pageable,
             String unidadName,
-            String operacionName) throws IOException {
+            String operacionName, String filterName) throws IOException {
         String baseDir = DEFAULT_DIRECTORY;
 
         Conexiones con = getFTPConnection()
@@ -87,7 +87,7 @@ public class FtpZipService {
         // throw new IOException(err);
         // }
 
-        Page<TreeNode> tree = treeBuild(ftp, baseDir, path, pageable);
+        Page<TreeNode> tree = treeBuild(ftp, baseDir, path, pageable, filterName);
 
         // Page<String> listFiles = null;
         // try {
@@ -331,7 +331,8 @@ public class FtpZipService {
         return directorios.subList(start, end);
     }
 
-    private Page<TreeNode> treeBuild(FTPClient ftp, String baseDir, String basePath, Pageable pageable)
+    private Page<TreeNode> treeBuild(FTPClient ftp, String baseDir, String basePath, Pageable pageable,
+            String filterName)
             throws IOException {
         // TreeNode root = new TreeNode("root", "0", new ArrayList<>(), true, false);
         List<TreeNode> root = new ArrayList<>();
@@ -349,7 +350,15 @@ public class FtpZipService {
         // Filtrar los archivos que son ficheros y terminan con '.zip'
         for (FTPFile archivo : archivos) {
             if (archivo.isFile() && archivo.getName().toLowerCase().endsWith(".zip")) {
-                archivosZip.add(archivo);
+                if (!Strings.isNullOrEmpty(filterName)) {
+                    // Si filterName no es null ni vacío, filtrar por el criterio
+                    if (archivo.getName().toLowerCase().contains(filterName.toLowerCase())) {
+                        archivosZip.add(archivo);
+                    }
+                } else {
+                    // Si filterName es null o vacío, agregar todos los .zip
+                    archivosZip.add(archivo);
+                }
             }
         }
 
