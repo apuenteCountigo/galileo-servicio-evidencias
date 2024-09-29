@@ -236,6 +236,7 @@ public class EvidenciaController {
             @RequestParam(defaultValue = "") String unidadName,
             @RequestParam(defaultValue = "") String objetivoName,
             @RequestParam(defaultValue = "") String operacionName,
+            @RequestParam(defaultValue = "") String filterName,
             @RequestParam(defaultValue = "") String fechaInicio,
             @RequestParam(defaultValue = "") String fechaFin,
             @RequestParam(defaultValue = "0") int page,
@@ -252,7 +253,7 @@ public class EvidenciaController {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(sort));
         // ftpCsv.listCsvFiles(pageable);
-        return ftpCsv.listCsvFiles(pageable, unidadName, operacionName, fechaInicio, fechaFin);
+        return ftpCsv.listCsvFiles(pageable, unidadName, operacionName, fechaInicio, fechaFin, filterName);
         // return ResponseEntity.ok("downloadCSV");
     }
 

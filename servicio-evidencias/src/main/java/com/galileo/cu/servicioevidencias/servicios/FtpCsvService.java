@@ -52,7 +52,7 @@ public class FtpCsvService {
             String unidadName,
             String operacionName,
             String fechaInicio,
-            String fechaFin) throws IOException {
+            String fechaFin, String filterName) throws IOException {
         String baseDir = DEFAULT_DIRECTORY;
 
         String fechaInicioFormateada = convertirFecha(fechaInicio);
@@ -98,7 +98,7 @@ public class FtpCsvService {
             throw new IOException(err);
         }
 
-        Page<TreeNode> tree = treeBuild(ftp, baseDir, path, directories, pageable);
+        Page<TreeNode> tree = treeBuild(ftp, baseDir, path, directories, pageable, filterName);
 
         disconnectFTP(ftp);
         return tree;
@@ -331,7 +331,7 @@ public class FtpCsvService {
     }
 
     private Page<TreeNode> treeBuild(FTPClient ftp, String baseDir, String basePath, List<String> directorios,
-            Pageable pageable) throws IOException {
+            Pageable pageable, String filterName) throws IOException {
         // Lista total de archivos .csv con sus rutas
         List<FileEntry> allCsvFiles = new ArrayList<>();
 
@@ -346,9 +346,17 @@ public class FtpCsvService {
             FTPFile[] archivos = ftp.listFiles();
             for (FTPFile archivo : archivos) {
                 if (archivo.isFile() && archivo.getName().toLowerCase().endsWith(".csv")) {
-                    // Almacenar la ruta completa del archivo y su nombre
-                    allCsvFiles.add(new FileEntry(directorio, archivo.getName()));
-                    log.info("directorio: {}, fichero: {}", directorio, archivo.getName());
+                    if (!Strings.isNullOrEmpty(filterName)) {
+                        // Si filterName no es null ni vacío, filtrar por el criterio
+                        if (archivo.getName().toLowerCase().contains(filterName.toLowerCase())) {
+                            allCsvFiles.add(new FileEntry(directorio, archivo.getName()));
+                            log.info("directorio: {}, fichero: {}", directorio, archivo.getName());
+                        }
+                    } else {
+                        // Si filterName es null o vacío, agregar todos los .csv
+                        allCsvFiles.add(new FileEntry(directorio, archivo.getName()));
+                        log.info("directorio: {}, fichero: {}", directorio, archivo.getName());
+                    }
                 }
             }
         }
