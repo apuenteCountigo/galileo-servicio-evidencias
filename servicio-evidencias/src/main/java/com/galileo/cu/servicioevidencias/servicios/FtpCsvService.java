@@ -366,7 +366,7 @@ public class FtpCsvService {
         int pageSize = pageable.getPageSize();
         int totalFiles = allCsvFiles.size();
 
-        if (offset >= totalFiles) {
+        if (offset >= totalFiles && totalFiles > 0) {
             throw new IOException("Fallo, el índice de paginación no es correcto.");
         }
 
