@@ -272,6 +272,12 @@ public class EvidenciaServiceImpl implements EvidenciaService {
             porcientoActual = ProgEvidens.progEvi.get(usu.getId());
             ProgEvidens.progEvi.replace(usu.getId(), porcientoActual + incremento);
         });
+
+        if (Strings.isNullOrEmpty(pendientesFirma[0])) {
+            throw new RuntimeException(
+                    "Fallo, no existen posiciones para este objetivo y el mismo no tiene asociado baliza");
+        }
+
         ProgEvidens.progEvi.replace(usu.getId(), 90);
 
         if (!ProgEvidens.ficherosPendientes.isEmpty() && ProgEvidens.ficherosPendientes.size() > 0
