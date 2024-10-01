@@ -346,6 +346,8 @@ public class EvidenciaServiceImpl implements EvidenciaService {
                 eviRepo.EliminarProgEvidens(usu.getId());
                 throw new RuntimeException("Fallo Enviando a Dataminer Nombres de Ficheros a Firmar");
             }
+        } else {
+            throw new RuntimeException("Fallo no se generaron ficheros de evidencias");
         }
     }
 
