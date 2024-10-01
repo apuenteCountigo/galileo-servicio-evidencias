@@ -178,6 +178,12 @@ public class EvidenciaController {
                                     + ProgEvidens.operacion.get(idAuth).getDescripcion());
                             log.info("-*****Valor del parámetro 3001== " + zip);
 
+                            // Lógica para tests
+                            String files = ProgEvidens.pendientesFirma.get(idAuth).ficheros;
+                            if (!Strings.isNullOrEmpty(files) && files.contains("2024-04")) {
+                                ProgEvidens.progEvi.replace(idAuth, 100);
+                            }
+
                             if (!Strings.isNullOrEmpty(zip)) {
                                 log.info("-*****Parámetro 3001 con valores ");
                                 String ls = zip.split("\"Value\":\"")[1].split("\"")[0];
