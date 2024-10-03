@@ -363,7 +363,7 @@ public class FtpZipService {
         }
 
         // Verificar que el offset es válido
-        if (offset >= archivosZip.size()) {
+        if (archivosZip != null && archivosZip.size() > 0 && offset >= archivosZip.size()) {
             throw new IOException("Fallo, el índice de paginación no es correcto.");
         }
 
