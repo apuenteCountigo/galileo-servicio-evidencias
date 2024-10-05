@@ -378,6 +378,7 @@ public class FtpZipService {
                     basePath,
                     null,
                     true,
+                    false,
                     false);
             root.add(fileNode);
         }

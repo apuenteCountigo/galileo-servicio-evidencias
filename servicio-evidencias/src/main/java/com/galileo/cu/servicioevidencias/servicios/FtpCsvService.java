@@ -390,6 +390,7 @@ public class FtpCsvService {
                         basePath + "/" + directorio,
                         new ArrayList<>(),
                         false,
+                        false,
                         false);
                 directoryNodes.put(directorio, dirNode);
             }
@@ -400,6 +401,7 @@ public class FtpCsvService {
                     basePath + "/" + directorio,
                     null,
                     true,
+                    false,
                     false);
             dirNode.getChildren().add(fileNode);
         }

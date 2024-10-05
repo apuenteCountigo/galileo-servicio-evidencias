@@ -15,4 +15,5 @@ public class TreeNode {
     public List<TreeNode> children;
     public boolean isLeaf;
     public boolean isExpanded;
+    public boolean checked;
 }
