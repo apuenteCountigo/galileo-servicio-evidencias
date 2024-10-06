@@ -377,23 +377,24 @@ public class FtpCsvService {
         List<FileEntry> pageFiles = allCsvFiles.subList((int) offset, endIndex);
 
         // Construir la estructura del árbol solo con los archivos de la página actual
-        Map<String, TreeNode> directoryNodes = new HashMap<>();
+        // Map<String, TreeNode> directoryNodes = new HashMap<>();
+        Map<String, TreeNode> fileNodes = new HashMap<>();
         for (FileEntry fileEntry : pageFiles) {
             String directorio = fileEntry.getDirectory();
             String fileName = fileEntry.getFileName();
 
             // Obtener o crear el nodo de la carpeta
-            TreeNode dirNode = directoryNodes.get(directorio);
-            if (dirNode == null) {
-                dirNode = new TreeNode(
-                        directorio,
-                        basePath + "/" + directorio,
-                        new ArrayList<>(),
-                        false,
-                        false,
-                        false);
-                directoryNodes.put(directorio, dirNode);
-            }
+            // TreeNode dirNode = directoryNodes.get(directorio);
+            // if (dirNode == null) {
+            // dirNode = new TreeNode(
+            // directorio,
+            // basePath + "/" + directorio,
+            // new ArrayList<>(),
+            // false,
+            // false,
+            // false);
+            // directoryNodes.put(directorio, dirNode);
+            // }
 
             // Crear el nodo del archivo y añadirlo a la carpeta
             TreeNode fileNode = new TreeNode(
@@ -403,12 +404,13 @@ public class FtpCsvService {
                     true,
                     false,
                     false);
-            dirNode.getChildren().add(fileNode);
+            fileNodes.put(fileName, fileNode);
+            // dirNode.getChildren().add(fileNode);
         }
 
         // Construir la lista final de nodos raíz (carpetas que contienen los archivos
         // de la página)
-        List<TreeNode> root = new ArrayList<>(directoryNodes.values());
+        List<TreeNode> root = new ArrayList<>(fileNodes.values());
 
         // Serializar el árbol para el registro (opcional)
         String json = objectMapper.writeValueAsString(root);
