@@ -1,7 +1,7 @@
 on:
   push:
     branches:
-      - BeforeRuta
+      - version-1.1
   workflow_dispatch:
 jobs:
   run_pull:
@@ -44,11 +44,16 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            ssh -i ~/id_rsaalain mome@192.168.0.98 '
-            cd galileo-newdev/evidencias/galileo-servicio-evidencias &&
+            ssh -i ~/id_rsaalain mome@192.168.0.212 '
+            cd galileo-dev-v1.1/evidencias &&
+            if [ ! -d "galileo-servicio-evidencias" ]; then
+              echo "validada galileo-dev-v1.1/evidencias/galileo-servicio-evidencias" &&
+              git clone https://github.com/apuenteCountigo/galileo-servicio-evidencias.git
+            fi
+            cd galileo-servicio-evidencias &&
             git fetch origin &&
-            git checkout BeforeRuta &&
-            git reset --hard origin/BeforeRuta &&
+            git checkout version-1.1 &&
+            git reset --hard origin/version-1.1 &&
             git pull &&
             cd servicio-evidencias &&
             export PATH=/opt/maven/bin:$PATH && mvn clean install -DskipTests &&
