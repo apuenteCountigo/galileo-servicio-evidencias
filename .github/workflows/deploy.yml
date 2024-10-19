@@ -67,5 +67,10 @@ jobs:
               docker rmi "$IMAGE_NAME" &&
               echo "$IMAGE_NAME"
             fi;
-            docker compose up servicio-evidencias -d'
+            docker compose up servicio-evidencias -d &&
+            while ! docker ps | grep "servicio-evidencias"; do
+              echo "Esperando a que el contenedor esté listo..."
+              sleep 5
+            done
+            docker save -o /home/mome/galileo-images-v1.1.0/servicio-evidencias_1.1.0.tar galileo/servicio-evidencias:1.1.0'
             exit
