@@ -226,7 +226,7 @@ public class EvidenciaRepositoryImpl implements EvidenciaRepository {
 
         int[] indice = { 0, 0, 0 };// [0]=Cantidad; [1]=indice;[2]=Cantidad de Incrementos Realizados
         indice[0] = pos.size() / 10;
-        String[] bClave = { "", "", "" };// [0]=Clave Blaiza, [1]=contenido KML, [2]=contenido csv
+        String[] bClave = { "", "", "" };// [0]=Clave Baliza, [1]=contenido KML, [2]=contenido csv
         pos.forEach((Posiciones p) -> {
             indice[1]++;
             String tp = tipoPrecision;
@@ -316,7 +316,7 @@ public class EvidenciaRepositoryImpl implements EvidenciaRepository {
             try {
                 WriteFiles(nf + ".csv", csvContent + bClave[2], pathOperacion + "/" + bClave[0],
                         "Fallo Creando Fichero CSV: ", idAuth);
-                pendientesFirma[0] += nf;
+                pendientesFirma[0] += nf + ",";
                 List<String> ls = ProgEvidens.ficherosPendientes.get(idAuth);
                 ls.add(bClave[0] + "®" + nf + ".csv");
                 ProgEvidens.ficherosPendientes.replace(idAuth, ls);
