@@ -72,5 +72,5 @@ jobs:
               echo "Esperando a que el contenedor esté listo..."
               sleep 5
             done
-            docker save -o /home/mome/galileo-images-v1.1/servicio-evidencias_1.1.4.tar.gz galileo/servicio-evidencias:1.1.4'
+            docker save -o /home/mome/galileo-images-v1.1/servicio-evidencias_1.1.5.tar.gz galileo/servicio-evidencias:1.1.5'
             exit
