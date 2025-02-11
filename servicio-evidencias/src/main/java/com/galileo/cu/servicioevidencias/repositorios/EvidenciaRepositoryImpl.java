@@ -296,7 +296,7 @@ public class EvidenciaRepositoryImpl implements EvidenciaRepository {
             bClave[2] += p.getBalizas().getClave() + "," + p.getFechaCaptacion() + "," + p.getLatitud()
                     + "," + p.getLongitud() + "," + p.getTimestampServidor() + "," + p.getSatelites() + ","
                     + p.getPrecision() + "," + p.getEvento() + "," + p.getVelocidad() + "," + p.getRumbo()
-                    + "," + p.getPrecision() + "\n";
+                    + "," + p.getToponimia() + "\n";
             bClave[0] = p.getClave();
 
             if (indice[1] == indice[0]) {
