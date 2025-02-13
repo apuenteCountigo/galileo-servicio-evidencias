@@ -249,10 +249,10 @@ public class EvidenciaRepositoryImpl implements EvidenciaRepository {
                 }
 
                 try {
-                    WriteFiles(nombreFicheroKML + ".kml", head + bClave[1] + "</Document></kml>",
+                    WriteFiles(nf + ".kml", head + bClave[1] + "</Document></kml>",
                             pathOperacion + "/KMLS", "Fallo Creando Fichero KML: ", idAuth);
                     List<String> ls = ProgEvidens.ficherosPendientes.get(idAuth);
-                    ls.add(nombreFicheroKML + ".kml");
+                    ls.add(nf + ".kml");
                     ProgEvidens.ficherosPendientes.replace(idAuth, ls);
                 } catch (Exception e) {
                     log.error("Fallo Creando Fichero KML: ", e.getMessage());
@@ -328,10 +328,10 @@ public class EvidenciaRepositoryImpl implements EvidenciaRepository {
             }
 
             try {
-                WriteFiles(nombreFicheroKML + ".kml", head + bClave[1] + "</Document></kml>", pathOperacion + "/KMLS",
+                WriteFiles(nf + ".kml", head + bClave[1] + "</Document></kml>", pathOperacion + "/KMLS",
                         "Fallo Creando Fichero KML: ", idAuth);
                 List<String> ls = ProgEvidens.ficherosPendientes.get(idAuth);
-                ls.add(nombreFicheroKML + ".kml");
+                ls.add(nf + ".kml");
                 ProgEvidens.ficherosPendientes.replace(idAuth, ls);
             } catch (Exception e) {
                 log.error("Fallo Creando Fichero KML: ", e);
