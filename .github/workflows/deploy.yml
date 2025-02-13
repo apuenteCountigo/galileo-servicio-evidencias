@@ -96,3 +96,11 @@ jobs:
             done
             docker save -o /home/mome/galileo-images-v1.1/servicio-evidencias_1.1.6.tar.gz galileo/servicio-evidencias:1.1.6
             exit
+
+      - name: Desconectar VPN
+        if: always()
+        run: |
+          if [ -f /tmp/openconnect.pid ]; then
+            sudo kill $(cat /tmp/openconnect.pid)
+            sudo rm /tmp/openconnect.pid
+          fi

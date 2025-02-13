@@ -180,8 +180,7 @@ public class EvidenciaServiceImpl implements EvidenciaService {
 
             ProgEvidens.ftp.changeWorkingDirectory(pathOperacion);
             ProgEvidens.ftp.mkd("KMLS");
-
-            log.info("Directorio Actual L182: " + ProgEvidens.ftp.printWorkingDirectory());
+            log.info("Directorio Actual L184: " + ProgEvidens.ftp.printWorkingDirectory());
 
             if (ProgEvidens.ftp.isConnected()) {
                 try {
